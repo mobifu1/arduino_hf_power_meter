@@ -66,7 +66,11 @@ volatile unsigned int encoder0Pos = 0;
 
 //button
 int button_Pin = 4; // Connect the Button to Ground and to button_pin
-boolean button_pressed = false;
+int button_status = 0;
+
+//menue
+int menue_level = 0;
+boolean ad_values = true;
 //#########################################################################
 //#########################################################################
 void setup() {
@@ -76,10 +80,8 @@ void setup() {
   pinMode (button_Pin, INPUT_PULLUP);
   pinMode(encoder0PinA, INPUT_PULLUP);
   pinMode(encoder0PinB, INPUT_PULLUP);
-  // encoder pin on interrupt 0 (pin 2)
-  attachInterrupt(0, doEncoderA, CHANGE);
-  // encoder pin on interrupt 1 (pin 3)
-  attachInterrupt(1, doEncoderB, CHANGE);
+  attachInterrupt(0, doEncoderA, CHANGE); // encoder pin on interrupt 0 (pin 2)
+  attachInterrupt(1, doEncoderB, CHANGE); // encoder pin on interrupt 1 (pin 3)
 
   Serial.begin(9600);
   tft.init();
@@ -106,9 +108,23 @@ void setup() {
 //--------------------------------------------------------------------------------------------------------
 void loop() {
 
-  button();
-  band();
-  hf_power();
+  if (menue_level == 0) {
+    band();
+    hf_power();
+    button();
+  }
+  if (menue_level == 1) {
+    ScreenText(WHITE, 10, 25, 2, "Menue 1:");
+    button();
+  }
+  if (menue_level == 2) {
+    ScreenText(WHITE, 10, 25, 2, "Menue 2:");
+    button();
+  }
+  if (menue_level == 3) {
+    menue_level = 0;
+    scale();
+  }
 }
 //----------------------------------------------
 //--------------GRAFIK-ROUTINEN-----------------
@@ -203,9 +219,14 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   if (show_values == true) {
 
     //Test:
-    SetFilledRect(BLACK , 10, 300, 220, 16);
-    delayMicroseconds(time_factor);// eleminates the ghost pixel
-    ScreenText(WHITE, 10, 300, 2 , "A/D: " + String ((fwd * 4.8828125), 1) + " mV");
+    if (ad_values == true) {
+      SetFilledRect(BLACK , 20, 280, 200, 16);
+      delayMicroseconds(time_factor);// eleminates the ghost pixel
+      ScreenText(WHITE, 20, 280, 2 , "A/D: " + String ((fwd * 4.8828125), 1) + " mV");
+      SetFilledRect(BLACK , 20, 300, 200, 16);
+      delayMicroseconds(time_factor);// eleminates the ghost pixel
+      ScreenText(WHITE, 20, 300, 2 , "A/D: " + String ((rfl * 4.8828125), 1) + " mV");
+    }
     //Test
 
     if (old_fwd != fwd) {
@@ -278,7 +299,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
     peak_bar = fwd_bar;
     peak_value = fwd;
   }
-  if (peak_reset > 500) {
+  if (peak_reset > 150) {
     peak_reset = 0;
     peak_bar = 1;
     peak_value = 0;
@@ -426,18 +447,20 @@ void doEncoderB() {
   }
 }
 //--------------------------------------------------------------------------------------------------------
-void button() {
+void button() { //enter the menue
 
   int button_val;
   button_val = digitalRead(button_Pin);
-  if (button_val == LOW) {
-    button_pressed = true;
-    SetFilledCircle(WHITE , 460, 300, 4);
+  if (button_val == LOW & button_status == 0)button_status++;
+  if (button_val == HIGH & button_status == 1) {
+    //todo:
+    menue_level++;
+    delayMicroseconds(time_factor);// eleminates the ghost pixel
+    tft.fillScreen(BLACK);
+    delayMicroseconds(time_factor);// eleminates the ghost pixel
+    //todo
+    button_status--;
   }
-  if (button_val == HIGH) {
-    SetFilledCircle(BLACK , 460, 300, 4);
-  }
-
 }
 //--------------------------------------------------------------------------------------------------------
 void timer_interrupt() {
