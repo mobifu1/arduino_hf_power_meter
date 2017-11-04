@@ -12,6 +12,7 @@
    Original header is at the end of the sketch, some text in it is
    not applicable to the HX8357 display supported by this example.
 
+    HF-Power Meter: 100-3000 Watt
     10 W = 0.4472 A an 50 Ohm  > P = (I*I)/R
     Die ausgekoppelte FWD Spannung ist dem HF-Strom proportional.
 */
@@ -21,7 +22,7 @@
 
 TFT_HX8357 tft = TFT_HX8357();
 
-// Assign human-readable names to some common 16-bit color values:
+//16-bit color values:
 #define BLACK   0xFFFF
 #define WHITE   0x0000
 #define BLUE    0xFFE0
@@ -38,7 +39,6 @@ const int x_edge_left = 0;
 const int x_edge_right = 479;
 const int y_edge_up = 0;
 const int y_edge_down = 319;
-const int time_factor = 20;//microseconds > reduce the ghost pixel
 
 const float pi = 3.14159265;
 
@@ -46,8 +46,10 @@ int analog_fwd_Pin = A0;
 int analog_rfl_Pin = A1;
 int band_val = 1;
 float band_factor = 1;
+float divisor_factor = 0.00324; // 0.00081; // calculate the power in watt
+const String band_names [8] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 10m"};
+const float band_factors [8] = {1, 1.046, 1.124, 1.175, 1.225, 1.28, 1.35, 1.41}; //160m-10m
 
-int counter = 0;
 boolean show_values = false;
 
 int peak_value = 0;
@@ -94,7 +96,7 @@ void setup() {
   tft.fillScreen(BLACK);
   scale();
 
-  Timer1.initialize(30000000);//microseconds = 30 seconds
+  Timer1.initialize(1000000);//microseconds
   Timer1.attachInterrupt(timer_interrupt);
 
   //  Invert the color
@@ -111,15 +113,15 @@ void loop() {
   if (menue_level == 0) {
     band();
     hf_power();
-    button();
+    encoder_button();
   }
   if (menue_level == 1) {
-    ScreenText(WHITE, 10, 25, 2, "Menue 1:");
-    button();
+    menue_1();
+    encoder_button();
   }
   if (menue_level == 2) {
-    ScreenText(WHITE, 10, 25, 2, "Menue 2:");
-    button();
+    menue_2();
+    encoder_button();
   }
   if (menue_level == 3) {
     menue_level = 0;
@@ -130,17 +132,12 @@ void loop() {
 //--------------GRAFIK-ROUTINEN-----------------
 //----------------------------------------------
 void ScreenText(uint16_t color, int xtpos, int ytpos, int text_size , String text) {
-  delayMicroseconds(time_factor);// eleminates the ghost pixel
+
   tft.setCursor(xtpos, ytpos);
-  delayMicroseconds(time_factor);// eleminates the ghost pixel
   tft.setTextFont(1);
-  delayMicroseconds(time_factor);// eleminates the ghost pixel
   tft.setTextColor(color);
-  delayMicroseconds(time_factor);// eleminates the ghost pixel
   tft.setTextSize(text_size);
-  delayMicroseconds(time_factor);// eleminates the ghost pixel
   tft.println(text);
-  delayMicroseconds(time_factor);// eleminates the ghost pixel
 }
 
 void SetLines(uint16_t color , int xl1pos, int yl1pos, int xl2pos, int yl2pos) {
@@ -178,27 +175,18 @@ void SetFilledTriangle(uint16_t color , int xpeak, int ypeak, int xbottom_left, 
 void scale() {
 
   SetRect(WHITE , x_edge_left, 80, x_edge_right, 20);  //FWD
-  delayMicroseconds(time_factor);// eleminates the ghost pixel
   SetRect(WHITE , x_edge_left, 130, x_edge_right, 10); //RFL
-  delayMicroseconds(time_factor);// eleminates the ghost pixel
 
   for (int x = 0; x < x_edge_right; x += 32) {
     SetPoint(WHITE, x, 101);
-    delayMicroseconds(time_factor);// eleminates the ghost pixel
     SetPoint(WHITE, x, 141);
-    delayMicroseconds(time_factor);// eleminates the ghost pixel
   }
 
   ScreenText(WHITE, 10, 25, 2, "PWR:");
-  delayMicroseconds(time_factor);// eleminates the ghost pixel
   ScreenText(WHITE, 300, 25, 2, "BAND: ");
-  delayMicroseconds(time_factor);// eleminates the ghost pixel
 }
 //--------------------------------------------------------------------------------------------------------
 void hf_power() {  //show FWD / RFL / SWR / Peak-Power
-
-  counter++;
-  if (counter == 100)show_values = true;
 
   int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
   int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
@@ -207,9 +195,8 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   //rfl = 40;  // 40 A/D = 0.1 W
 
   // band_factor = 0.7; the value comes from the band switch > correction of the swr-bridge
-  float factor_1 = 0.00324; // 0.00081; // calculate the power in watt
-  float fwd_float = float(fwd) * band_factor * factor_1; //value:0-470
-  float rfl_float = float(rfl) * band_factor * factor_1; //value:0-470
+  float fwd_float = float(fwd) * band_factor * divisor_factor; //value:0-470
+  float rfl_float = float(rfl) * band_factor * divisor_factor; //value:0-470
   float fwd_watt = fwd_float * fwd_float * 50;
   float rfl_watt = rfl_float * rfl_float * 50;
 
@@ -221,10 +208,8 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
     //Test:
     if (ad_values == true) {
       SetFilledRect(BLACK , 20, 280, 200, 16);
-      delayMicroseconds(time_factor);// eleminates the ghost pixel
       ScreenText(WHITE, 20, 280, 2 , "A/D: " + String ((fwd * 4.8828125), 1) + " mV");
       SetFilledRect(BLACK , 20, 300, 200, 16);
-      delayMicroseconds(time_factor);// eleminates the ghost pixel
       ScreenText(WHITE, 20, 300, 2 , "A/D: " + String ((rfl * 4.8828125), 1) + " mV");
     }
     //Test
@@ -232,23 +217,17 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
     if (old_fwd != fwd) {
       old_fwd = fwd;
       SetFilledRect(BLACK , 40, 70, 60, 8);
-      delayMicroseconds(time_factor);// eleminates the ghost pixel
       if (fwd > 1)ScreenText(WHITE, 10, 70, 1 , "FWD: " + String (fwd_watt, 1) + " W");
-      delayMicroseconds(time_factor);// eleminates the ghost pixel
       //dBm calculation
       double dBm = 30 + (10 * log10(double(fwd_watt)));
       SetFilledRect(BLACK , 70, 25, 100, 16);
-      delayMicroseconds(time_factor);// eleminates the ghost pixel
       if (fwd > 1)ScreenText(WHITE, 70, 25, 2 , String (dBm, 1) + " dBm");
-      delayMicroseconds(time_factor);// eleminates the ghost pixel
-
     }
+
     if (old_rfl != rfl) {
       old_rfl = rfl;
       SetFilledRect(BLACK , 40, 120, 60, 8);
-      delayMicroseconds(time_factor);// eleminates the ghost pixel
       if (rfl > 1)ScreenText(WHITE, 10, 120, 1 , "RFL: " + String (rfl_watt, 1) + " W");
-      delayMicroseconds(time_factor);// eleminates the ghost pixel
     }
   }
   //fwd bar:  10W = 469 A/D
@@ -262,7 +241,6 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
     if (i < 125) fwd_color = GREEN;
     if (i > fwd_bar) fwd_color = BLACK;
     SetFilledRect(fwd_color , i, 81, 5, 18);
-    delayMicroseconds(time_factor);// eleminates the ghost pixel
   }
 
   //rfl bar:
@@ -276,7 +254,6 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
     if (y < 125) rfl_color = GREEN;
     if (y > rfl_bar) rfl_color = BLACK;
     SetFilledRect(rfl_color , y, 131, 5, 8) ;
-    delayMicroseconds(time_factor);// eleminates the ghost pixel
   }
 
   //SWR
@@ -288,9 +265,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
       if (swr >= 3)SetRect(RED , 10, 218, 145, 40);
       if (swr < 3)SetRect(BLACK , 10, 218, 145, 40);
       SetFilledRect(BLACK , 80, 230, 70, 16);
-      delayMicroseconds(time_factor);// eleminates the ghost pixel
       ScreenText(WHITE, 20, 230, 2 , "SWR: " + String (swr, 1));
-      delayMicroseconds(time_factor);// eleminates the ghost pixel
     }
   }
 
@@ -307,66 +282,26 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   if (peak_bar > 475) peak_bar = 475;
   if (old_peak_bar != peak_bar) {
     SetTriangle(BLACK , old_peak_bar, 102, old_peak_bar - 4, 108, old_peak_bar + 4, 108);
-    delayMicroseconds(time_factor);// eleminates the ghost pixel
     old_peak_bar = peak_bar;
-    float peak_float = float(peak_value) * band_factor * factor_1; //value:0-470
+    float peak_float = float(peak_value) * band_factor * divisor_factor; //value:0-470
     float peak_watt = peak_float * peak_float * 50;
     SetFilledRect(BLACK , 230, 70, 60, 8);
-    delayMicroseconds(time_factor);// eleminates the ghost pixel
     if (peak_value > 1)ScreenText(WHITE, 200, 70, 1, "PEAK: " + String (peak_watt, 1) + " W");
   }
-  delayMicroseconds(time_factor);// eleminates the ghost pixel
   SetTriangle(WHITE , old_peak_bar, 102, old_peak_bar - 4, 108, old_peak_bar + 4, 108);
 
-  if (counter == 100) {
-    counter = 0;
-    show_values = false;
-  }
+  show_values = false;
 }
 //--------------------------------------------------------------------------------------------------------
 void band() { //show the used band
 
-  String band_value;
-
-  if (band_val == 1) {
-    band_value = "160m";
-    band_factor =  1; // factor for calculation of fwd and rfl for different bands
-  }
-  if (band_val == 2) {
-    band_value = "80m";
-    band_factor =  1.046;
-  }
-  if (band_val == 3) {
-    band_value = "40m";
-    band_factor =  1.124;
-  }
-  if (band_val == 4) {
-    band_value = "30m";
-    band_factor = 1.175 ;
-  }
-  if (band_val == 5) {
-    band_value = "20m";
-    band_factor =  1.225;
-  }
-  if (band_val == 6) {
-    band_value = "17m";
-    band_factor =  1.28;
-  }
-  if (band_val == 7) {
-    band_value = "15m";
-    band_factor =  1.35;
-  }
-  if (band_val == 8) {
-    band_value = "10m";
-    band_factor =  1.41;
-  }
+  String band_value = band_names [band_val];
+  band_factor =  band_factors[band_val]; // factor for calculation of fwd and rfl for different bands
 
   if (old_band != band_value) {
     old_band = band_value;
     SetFilledRect(BLACK , 370, 25, 100, 16) ;
-    delayMicroseconds(time_factor);// eleminates the ghost pixel
     ScreenText(WHITE, 370, 25, 2, band_value );
-    delayMicroseconds(time_factor);// eleminates the ghost pixel
   }
 }
 //--------------------------------------------------------------------------------------------------------
@@ -376,16 +311,12 @@ void doEncoderA() {
 
     // check channel B to see which way encoder is turning
     if (digitalRead(encoder0PinB) == LOW) {
-      encoder0Pos++;         // CW
-      band_val++;
-      if (band_val > 8)band_val = 1;
-      Serial.println ("A:H / B:L +");
+      encoder_turn(true);
+      //Serial.println ("A:H / B:L +");
     }
     else {
-      encoder0Pos--;         // CCW
-      band_val--;
-      if (band_val < 1)band_val = 8;
-      Serial.println ("A:H / B:H -");
+      encoder_turn(false);
+      //Serial.println ("A:H / B:H -");
     }
   }
 
@@ -393,16 +324,12 @@ void doEncoderA() {
   {
     // check channel B to see which way encoder is turning
     if (digitalRead(encoder0PinB) == HIGH) {
-      encoder0Pos++;          // CW
-      band_val++;
-      if (band_val > 8)band_val = 1;
-      Serial.println ("A:L / B:H +");
+      encoder_turn(true);
+      //Serial.println ("A:L / B:H +");
     }
     else {
-      encoder0Pos--;          // CCW
-      band_val--;
-      if (band_val < 1)band_val = 8;
-      Serial.println ("A:L / B:L -");
+      encoder_turn(false);
+      //Serial.println ("A:L / B:L -");
     }
   }
   //Serial.println (encoder0Pos, DEC);
@@ -415,15 +342,11 @@ void doEncoderB() {
 
     // check channel A to see which way encoder is turning
     if (digitalRead(encoder0PinA) == HIGH) {
-      encoder0Pos++;// CW
-      band_val++;
-      if (band_val > 8)band_val = 1;
-      Serial.println ("B:H / A:H +");
+      encoder_turn(true);
+      //Serial.println ("B:H / A:H +");
     }
     else {
-      encoder0Pos--;// CCW
-      band_val--;
-      if (band_val < 1)band_val = 8;
+      encoder_turn(false);
       Serial.println ("B:H / A:L -");
     }
   }
@@ -433,38 +356,85 @@ void doEncoderB() {
   else {
     // check channel B to see which way encoder is turning
     if (digitalRead(encoder0PinA) == LOW) {
-      encoder0Pos++;// CW
-      band_val++;
-      if (band_val > 8)band_val = 1;
-      Serial.println ("B:L / A:L +");
+      encoder_turn(true);
+      //Serial.println ("B:L / A:L +");
     }
     else {
-      encoder0Pos--;// CCW
-      band_val--;
-      if (band_val < 1)band_val = 8;
-      Serial.println ("B:L / A:H -");
+      encoder_turn(false);
+      //Serial.println ("B:L / A:H -");
     }
   }
 }
 //--------------------------------------------------------------------------------------------------------
-void button() { //enter the menue
+void encoder_turn(boolean enc_direction) {
+
+  if (enc_direction == true) { //turn right
+    if (menue_level == 0 ) {
+      band_val++;
+      if (band_val > 7)band_val = 0;
+    }
+    if (menue_level == 1 ) {
+
+    }
+    if (menue_level == 2 ) {
+
+    }
+  }
+  //---------------------------
+  if (enc_direction == false) { //turn left
+    if (menue_level == 0 ) {
+      band_val--;
+      if (band_val < 0)band_val = 7;
+    }
+    if (menue_level == 1 ) {
+
+    }
+    if (menue_level == 2 ) {
+
+    }
+  }
+}
+//--------------------------------------------------------------------------------------------------------
+void encoder_button() { //enter the menue
 
   int button_val;
   button_val = digitalRead(button_Pin);
   if (button_val == LOW & button_status == 0)button_status++;
   if (button_val == HIGH & button_status == 1) {
     //todo:
-    menue_level++;
-    delayMicroseconds(time_factor);// eleminates the ghost pixel
-    tft.fillScreen(BLACK);
-    delayMicroseconds(time_factor);// eleminates the ghost pixel
+    if (menue_level == 2 ) {
+      menue_level++;
+      tft.fillScreen(BLACK);
+    }
+    if (menue_level == 1 ) {
+      menue_level++;
+      tft.fillScreen(BLACK);
+    }
+    if (menue_level == 0 ) {
+      menue_level++;
+      tft.fillScreen(BLACK);
+    }
     //todo
     button_status--;
   }
 }
+//-------------------------------------------------------------------------------------------------------
+void menue_1() {
+
+  ScreenText(WHITE, 10, 25, 2, "SWR Calibration Factors:");
+  for (int i = 0; i < 8; i++) {
+    ScreenText(WHITE, 10, 80 + (20 * i), 2, band_names[i] + ": " + String(band_factors [i]));
+  }
+  ScreenText(WHITE, 10, 270, 2, "Resistor Divisor: " + String(divisor_factor, DEC));
+}
+//-------------------------------------------------------------------------------------------------------
+void menue_2() {
+
+  ScreenText(WHITE, 10, 25, 2, "Reserve:");
+}
 //--------------------------------------------------------------------------------------------------------
 void timer_interrupt() {
 
-
+  show_values = true;
 }
 //--------------------------------------------------------------------------------------------------------
