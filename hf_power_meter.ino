@@ -41,9 +41,11 @@ const int y_edge_up = 0;
 const int y_edge_down = 319;
 
 const float pi = 3.14159265;
+const float to_mV = 4.8828125;
 
 int analog_fwd_Pin = A0;
 int analog_rfl_Pin = A1;
+int analog_batt_Pin = A2;
 int band_val = 1;
 float band_factor = 1;
 const float divisor_factor = 0.00324; // 0.00081; // calculate the power in watt
@@ -72,13 +74,14 @@ int button_status = 0;
 
 //menue
 int menue_level = 0;
-boolean ad_values = true;
+boolean use_batt = false;
 //#########################################################################
 //#########################################################################
 void setup() {
 
   pinMode(analog_fwd_Pin, INPUT);
   pinMode(analog_rfl_Pin, INPUT);
+  pinMode(analog_batt_Pin, INPUT);
   pinMode (button_Pin, INPUT_PULLUP);
   pinMode(encoder0PinA, INPUT_PULLUP);
   pinMode(encoder0PinB, INPUT_PULLUP);
@@ -113,6 +116,7 @@ void loop() {
   if (menue_level == 0) {
     band();
     hf_power();
+    batterie();
     encoder_button();
   }
   if (menue_level == 1) {
@@ -184,6 +188,9 @@ void scale() {
 
   ScreenText(WHITE, 10, 25, 2, "PWR:");
   ScreenText(WHITE, 300, 25, 2, "BAND: ");
+
+  SetRect(WHITE , 430, 290, 30, 15);//Batterie
+  SetFilledRect(WHITE , 460, 295, 5, 5);
 }
 //--------------------------------------------------------------------------------------------------------
 void hf_power() {  //show FWD / RFL / SWR / Peak-Power
@@ -294,6 +301,18 @@ void band() { //show the used band
     SetFilledRect(BLACK , 370, 25, 100, 16) ;
     ScreenText(WHITE, 370, 25, 2, band_value );
   }
+}
+//--------------------------------------------------------------------------------------------------------
+void batterie() {
+
+  int batt = analogRead(analog_batt_Pin);  // read from sensor pin value:0-1024
+  float voltage_batt = batt * to_mV;
+  uint16_t batt_color;
+  if (voltage_batt >= 1200)batt_color = GREEN;//NiCd Cell Values in mV
+  if (voltage_batt < 1200)batt_color = ORANGE;
+  if (voltage_batt < 1150)batt_color = RED;
+  if (use_batt == false)batt_color = GREEN;
+  SetFilledRect(batt_color , 431, 291, 28, 13);
 }
 //--------------------------------------------------------------------------------------------------------
 void doEncoderA() {
@@ -418,6 +437,20 @@ void menue_1() {
     ScreenText(WHITE, 10, 80 + (20 * i), 2, band_names[i] + ": " + String(band_factors [i], 3));
   }
   ScreenText(WHITE, 10, 270, 2, "Resistor Divisor: " + String(divisor_factor, DEC));
+
+  SetLines(WHITE, 180, 80, 180, 235);//Coordinate y
+  SetLines(WHITE, 180, 235, 479, 235);//Coordinate x
+  for (int i = 0; i < 8; i++) { //scala X
+    SetLines(WHITE, 180 + (i * 40), 233, 180 + (i * 40), 237);
+    ScreenText(WHITE, 170 + (i * 40), 243, 1, band_names [i]);
+  }
+  SetLines(RED, 181, (100 * band_factors [0]), 220, 100 * band_factors [1]); //160m to 80m
+  SetLines(RED, 220, (100 * band_factors [1]), 260, 100 * band_factors [2]); //80m to 40m
+  SetLines(RED, 260, (100 * band_factors [2]), 300, 100 * band_factors [3]); //40m to 30m
+  SetLines(RED, 300, (100 * band_factors [3]), 340, 100 * band_factors [4]); //30m to 20m
+  SetLines(RED, 340, (100 * band_factors [4]), 380, 100 * band_factors [5]); //20m to 17m
+  SetLines(RED, 380, (100 * band_factors [5]), 420, 100 * band_factors [6]); //17m to 15m
+  SetLines(RED, 420, (100 * band_factors [6]), 460, 100 * band_factors [7]); //15m to 10m
 }
 //-------------------------------------------------------------------------------------------------------
 void menue_2() {
@@ -427,11 +460,17 @@ void menue_2() {
   if (show_values == true) {
     int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
     int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
+    int batt = analogRead(analog_batt_Pin);  // read from sensor pin value:0-1024
 
     SetFilledRect(BLACK , 160, 80, 150, 16);
-    ScreenText(WHITE, 10, 80, 2 , "Pin:" + String(analog_fwd_Pin) + " > A/D: " + String ((fwd * 4.8828125), 1) + " mV");
+    ScreenText(WHITE, 10, 80, 2 , "Pin:" + String(analog_fwd_Pin) + " > A/D: " + String ((fwd * to_mV), 1) + " mV");
+
     SetFilledRect(BLACK , 160, 100, 150, 16);
-    ScreenText(WHITE, 10, 100, 2 , "Pin:" + String(analog_rfl_Pin) + " > A/D: " + String ((rfl * 4.8828125), 1) + " mV");
+    ScreenText(WHITE, 10, 100, 2 , "Pin:" + String(analog_rfl_Pin) + " > A/D: " + String ((rfl * to_mV), 1) + " mV");
+
+    SetFilledRect(BLACK , 160, 120, 150, 16);
+    ScreenText(WHITE, 10, 120, 2 , "Pin:" + String(analog_batt_Pin) + " > A/D: " + String ((batt * to_mV), 1) + " mV");
+
     show_values = false;
   }
 }
