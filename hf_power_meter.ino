@@ -46,9 +46,9 @@ int analog_fwd_Pin = A0;
 int analog_rfl_Pin = A1;
 int band_val = 1;
 float band_factor = 1;
-float divisor_factor = 0.00324; // 0.00081; // calculate the power in watt
+const float divisor_factor = 0.00324; // 0.00081; // calculate the power in watt
 const String band_names [8] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 10m"};
-const float band_factors [8] = {1, 1.046, 1.124, 1.175, 1.225, 1.28, 1.35, 1.41}; //160m-10m
+const float band_factors [8] = {1, 1.046, 1.124, 1.175, 1.225, 1.280, 1.350, 1.410}; //160m-10m
 
 boolean show_values = false;
 
@@ -90,8 +90,8 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(BLACK);
-  ScreenText(WHITE, x_edge_left, 10 , 2, F("HF-Power Meter"));// Arduino IDE 1.6.11
-  ScreenText(WHITE, x_edge_left, 40 , 2, F("V0.1-Beta"));
+  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter"));// Arduino IDE 1.6.11
+  ScreenText(WHITE, 10, 40 , 2, F("V0.2-Beta"));
   delay(2000);
   tft.fillScreen(BLACK);
   scale();
@@ -204,15 +204,6 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   if (fwd > 0)peak_reset = 0;
 
   if (show_values == true) {
-
-    //Test:
-    if (ad_values == true) {
-      SetFilledRect(BLACK , 20, 280, 200, 16);
-      ScreenText(WHITE, 20, 280, 2 , "A/D: " + String ((fwd * 4.8828125), 1) + " mV");
-      SetFilledRect(BLACK , 20, 300, 200, 16);
-      ScreenText(WHITE, 20, 300, 2 , "A/D: " + String ((rfl * 4.8828125), 1) + " mV");
-    }
-    //Test
 
     if (old_fwd != fwd) {
       old_fwd = fwd;
@@ -422,15 +413,27 @@ void encoder_button() { //enter the menue
 void menue_1() {
 
   ScreenText(WHITE, 10, 25, 2, "SWR Calibration Factors:");
+  SetLines(WHITE, 10, 50, 290, 50);
   for (int i = 0; i < 8; i++) {
-    ScreenText(WHITE, 10, 80 + (20 * i), 2, band_names[i] + ": " + String(band_factors [i]));
+    ScreenText(WHITE, 10, 80 + (20 * i), 2, band_names[i] + ": " + String(band_factors [i], 3));
   }
   ScreenText(WHITE, 10, 270, 2, "Resistor Divisor: " + String(divisor_factor, DEC));
 }
 //-------------------------------------------------------------------------------------------------------
 void menue_2() {
 
-  ScreenText(WHITE, 10, 25, 2, "Reserve:");
+  ScreenText(WHITE, 10, 25, 2, "RAW Sensor Data:");
+  SetLines(WHITE, 10, 50, 195, 50);
+  if (show_values == true) {
+    int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
+    int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
+
+    SetFilledRect(BLACK , 160, 80, 150, 16);
+    ScreenText(WHITE, 10, 80, 2 , "Pin:" + String(analog_fwd_Pin) + " > A/D: " + String ((fwd * 4.8828125), 1) + " mV");
+    SetFilledRect(BLACK , 160, 100, 150, 16);
+    ScreenText(WHITE, 10, 100, 2 , "Pin:" + String(analog_rfl_Pin) + " > A/D: " + String ((rfl * 4.8828125), 1) + " mV");
+    show_values = false;
+  }
 }
 //--------------------------------------------------------------------------------------------------------
 void timer_interrupt() {
