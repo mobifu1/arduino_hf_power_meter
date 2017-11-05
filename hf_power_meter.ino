@@ -204,15 +204,26 @@ void scale() {
 
   SetRect(WHITE , 430, 290, 30, 15);//Batterie
   SetFilledRect(WHITE , 460, 295, 5, 5);
+
+  force_update_values = true;
 }
 //--------------------------------------------------------------------------------------------------------
 void hf_power() {  //show FWD / RFL / SWR / Peak-Power
 
   int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
   int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
+
   //Serial.println(String(fwd));
   //fwd = 836; // 1500W / 160m
   //rfl = 20;
+
+  if (fwd > 0 && fwd < 145) { //145 = 0.7V Diode
+    SetFilledTriangle(RED , 200, 290, 192 , 306 , 208 , 306);//291
+    ScreenText(RED, 220, 291, 2 , "Not Exact !");
+  }
+  else {
+    SetFilledRect(BLACK , 190, 291, 160, 16);
+  }
 
   float fwd_float = float(fwd) * band_factor * divisor_factor;
   float rfl_float = float(rfl) * band_factor * divisor_factor;
@@ -223,7 +234,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   if (fwd > 0)peak_reset = 0;
 
   if (update_values == true || force_update_values == true) {
-
+    update_values = false;
     if (old_fwd != fwd || force_update_values == true) {
       old_fwd = fwd;
       SetFilledRect(BLACK , 40, 70, 60, 8);
@@ -240,6 +251,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
       if (rfl > 1)ScreenText(WHITE, 10, 120, 1 , "RFL: " + String (rfl_watt, 1) + " W");
     }
   }
+
   //fwd bar:
   int fwd_bar = int(fwd_watt * 0.312);
   if (fwd_bar > x_edge_right - 1)fwd_bar = x_edge_right - 1;
@@ -299,20 +311,16 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
     if (peak_value > 1)ScreenText(WHITE, 200, 70, 1, "PEAK: " + String (peak_watt, 1) + " W");
   }
   SetTriangle(WHITE , old_peak_bar, 102, old_peak_bar - 4, 108, old_peak_bar + 4, 108);
-
-  update_values = false;
 }
 //--------------------------------------------------------------------------------------------------------
 void band() { //show the used band
 
-  String band = band_names[band_val];
-  band_factor =  band_factors[band_val]; // factor for calculation of fwd and rfl for different bands
-
   if (old_band != band_val || force_update_values == true) {
     old_band = band_val;
-    force_update_values = true;
+    band_factor =  band_factors[band_val]; // factor for calculation of fwd and rfl for different bands
     SetFilledRect(BLACK , 370, 25, 100, 16) ;
-    ScreenText(WHITE, 370, 25, 2, band);
+    ScreenText(WHITE, 370, 25, 2, band_names[band_val]);
+    force_update_values = true;
   }
 }
 //--------------------------------------------------------------------------------------------------------
@@ -450,7 +458,7 @@ void menue_1() {
   for (int i = 0; i < 8; i++) {
     ScreenText(WHITE, 10, 80 + (20 * i), 2, band_names[i] + ": " + String(band_factors [i], 3));
   }
-  ScreenText(WHITE, 10, 270, 2, "Resistor Divisor: " + String(divisor_factor, DEC));
+  ScreenText(WHITE, 10, 270, 2, "Divisor: " + String(divisor_factor, DEC));
 
   SetLines(WHITE, 180, 80, 180, 235);//Coordinate y
   SetLines(WHITE, 180, 235, 479, 235);//Coordinate x
