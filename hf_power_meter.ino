@@ -12,8 +12,8 @@
    Original header is at the end of the sketch, some text in it is
    not applicable to the HX8357 display supported by this example.
 
-    HF-Power Meter: 100-3000 Watt
-    10 W = 0.4472 A an 50 Ohm  > P = (I*I)/R
+    HF-Power Meter: 100-1500 Watt
+    10 W = 0.4472 A an 50 Ohm  > P=(I*I)*R
     Die ausgekoppelte FWD Spannung ist dem HF-Strom proportional.
 */
 #include <TimerOne.h>
@@ -46,12 +46,19 @@ const float to_mV = 4.8828125;
 int analog_fwd_Pin = A0;
 int analog_rfl_Pin = A1;
 int analog_batt_Pin = A2;
-int band_val = 1;
+int band_val = 0;
 float band_factor = 1;
 
-//calculate the incomming voltage from SWR-Bridge in current > 160m/10W = A/D 680mV > P=I*I*50 Ohm > I=0.447213595 A
-//additional calculate the resistor divisor chain
-const float divisor_factor = 0.00324;
+//calculate the incomming dc-voltage from SWR-Bridge in hf-current:
+
+// 160m > 1500W > P = I * I * 50 Ohm > I = 5,477 A > A/D = 5000mV > A/D = 1023 bit;
+// 160m > 1000W > P = I * I * 50 Ohm > I = 4.472 A > A/D = 4083mV > A/D =  836 bit;
+// 160m >  500W > P = I * I * 50 Ohm > I = 3.162 A > A/D = 2887mV > A/D =  591 bit;
+// 160m >  100W > P = I * I * 50 Ohm > I = 1.414 A > A/D = 1291mV > A/D =  264 bit;
+// 160m >   50W > P = I * I * 50 Ohm > I = 1.000 A > A/D =  913mV > A/D =  187 bit;
+// 160m >   10W > P = I * I * 50 Ohm > I = 0.616 A > A/D =  562mV > A/D =  115 bit;
+
+const float divisor_factor = 5.477 / 1023;//0.005348633;
 const String band_names [8] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 10m"};
 const float band_factors [8] = {1, 1.046, 1.124, 1.175, 1.225, 1.280, 1.350, 1.410}; //160m-10m > // correction of the swr-bridge
 
@@ -63,7 +70,7 @@ int peak_value = 0;
 int peak_bar = 0;
 int old_peak_bar = 1;
 uint16_t peak_reset = 0;
-String old_band = "/";
+int old_band = 0;
 int old_fwd = 0;
 int old_rfl = 0;
 float old_swr = 0;
@@ -204,20 +211,20 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
   int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
   //Serial.println(String(fwd));
-  //fwd = 680; // 680 A/D = 10 W / 160m
-  //rfl = 40;  // 40 A/D = 0.1 W
+  //fwd = 836; // 1500W / 160m
+  //rfl = 20;
 
-  float fwd_float = float(fwd) * band_factor * divisor_factor; //value:0-470
-  float rfl_float = float(rfl) * band_factor * divisor_factor; //value:0-470
+  float fwd_float = float(fwd) * band_factor * divisor_factor;
+  float rfl_float = float(rfl) * band_factor * divisor_factor;
   float fwd_watt = fwd_float * fwd_float * 50;
   float rfl_watt = rfl_float * rfl_float * 50;
 
   if (fwd == 0)peak_reset++;
   if (fwd > 0)peak_reset = 0;
 
-  if (update_values == true) {
+  if (update_values == true || force_update_values == true) {
 
-    if (old_fwd != fwd) {
+    if (old_fwd != fwd || force_update_values == true) {
       old_fwd = fwd;
       SetFilledRect(BLACK , 40, 70, 60, 8);
       if (fwd > 1)ScreenText(WHITE, 10, 70, 1 , "FWD: " + String (fwd_watt, 1) + " W");
@@ -227,14 +234,14 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
       if (fwd > 1)ScreenText(WHITE, 70, 25, 2 , String (dBm, 1) + " dBm");
     }
 
-    if (old_rfl != rfl) {
+    if (old_rfl != rfl || force_update_values == true) {
       old_rfl = rfl;
       SetFilledRect(BLACK , 40, 120, 60, 8);
       if (rfl > 1)ScreenText(WHITE, 10, 120, 1 , "RFL: " + String (rfl_watt, 1) + " W");
     }
   }
-  //fwd bar:  10W = 469 A/D
-  int fwd_bar = float(fwd) * 0.46;
+  //fwd bar:
+  int fwd_bar = int(fwd_watt * 0.312);
   if (fwd_bar > x_edge_right - 1)fwd_bar = x_edge_right - 1;
   uint16_t fwd_color;
   for (int i = 2; i < x_edge_right - 6; i += 6) {
@@ -247,7 +254,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   }
 
   //rfl bar:
-  int rfl_bar = float(rfl) * 0.46;
+  int rfl_bar = int(rfl_watt * 0.312);
   if (rfl_bar > x_edge_right - 1)rfl_bar = x_edge_right - 1;
   uint16_t rfl_color;
   for (int y = 2; y < x_edge_right - 6; y += 6) {
@@ -260,7 +267,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   }
 
   //SWR
-  if (update_values == true) {
+  if (update_values == true || force_update_values == true) {
     float swr = (float(fwd) + float(rfl)) / (float(fwd) - float(rfl));
     if (swr > 100)swr = 100;
     if (old_swr != swr && fwd > 0) {
@@ -298,13 +305,14 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
 //--------------------------------------------------------------------------------------------------------
 void band() { //show the used band
 
-  String band_value = band_names [band_val];
+  String band = band_names[band_val];
   band_factor =  band_factors[band_val]; // factor for calculation of fwd and rfl for different bands
 
-  if (old_band != band_value || force_update_values == true) {
-    old_band = band_value;
+  if (old_band != band_val || force_update_values == true) {
+    old_band = band_val;
+    force_update_values = true;
     SetFilledRect(BLACK , 370, 25, 100, 16) ;
-    ScreenText(WHITE, 370, 25, 2, band_value );
+    ScreenText(WHITE, 370, 25, 2, band);
   }
 }
 //--------------------------------------------------------------------------------------------------------
@@ -442,7 +450,7 @@ void menue_1() {
   for (int i = 0; i < 8; i++) {
     ScreenText(WHITE, 10, 80 + (20 * i), 2, band_names[i] + ": " + String(band_factors [i], 3));
   }
-  ScreenText(WHITE, 10, 270, 2, "Resistor Divisor: " + String(divisor_factor, 6));
+  ScreenText(WHITE, 10, 270, 2, "Resistor Divisor: " + String(divisor_factor, DEC));
 
   SetLines(WHITE, 180, 80, 180, 235);//Coordinate y
   SetLines(WHITE, 180, 235, 479, 235);//Coordinate x
