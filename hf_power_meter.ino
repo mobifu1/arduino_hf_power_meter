@@ -48,12 +48,17 @@ int analog_rfl_Pin = A1;
 int analog_batt_Pin = A2;
 int band_val = 1;
 float band_factor = 1;
-const float divisor_factor = 0.00324; // 0.00081; // calculate the power in watt
+
+//calculate the incomming voltage from SWR-Bridge in current > 160m/10W = A/D 680mV > P=I*I*50 Ohm > I=0.447213595 A
+//additional calculate the resistor divisor chain
+const float divisor_factor = 0.00324;
 const String band_names [8] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 10m"};
-const float band_factors [8] = {1, 1.046, 1.124, 1.175, 1.225, 1.280, 1.350, 1.410}; //160m-10m
+const float band_factors [8] = {1, 1.046, 1.124, 1.175, 1.225, 1.280, 1.350, 1.410}; //160m-10m > // correction of the swr-bridge
 
-boolean show_values = false;
+boolean update_values = false;
+boolean force_update_values = false;
 
+//hf values
 int peak_value = 0;
 int peak_bar = 0;
 int old_peak_bar = 1;
@@ -118,6 +123,7 @@ void loop() {
     hf_power();
     batterie();
     encoder_button();
+    force_update_values = false;//force to update values
   }
   if (menue_level == 1) {
     menue_1();
@@ -201,7 +207,6 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   //fwd = 680; // 680 A/D = 10 W / 160m
   //rfl = 40;  // 40 A/D = 0.1 W
 
-  // band_factor = 0.7; the value comes from the band switch > correction of the swr-bridge
   float fwd_float = float(fwd) * band_factor * divisor_factor; //value:0-470
   float rfl_float = float(rfl) * band_factor * divisor_factor; //value:0-470
   float fwd_watt = fwd_float * fwd_float * 50;
@@ -210,7 +215,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   if (fwd == 0)peak_reset++;
   if (fwd > 0)peak_reset = 0;
 
-  if (show_values == true) {
+  if (update_values == true) {
 
     if (old_fwd != fwd) {
       old_fwd = fwd;
@@ -255,7 +260,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   }
 
   //SWR
-  if (show_values == true) {
+  if (update_values == true) {
     float swr = (float(fwd) + float(rfl)) / (float(fwd) - float(rfl));
     if (swr > 100)swr = 100;
     if (old_swr != swr && fwd > 0) {
@@ -268,7 +273,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   }
 
   //Peak Value
-  if (fwd_bar > peak_bar) {
+  if (fwd_bar > peak_bar || force_update_values == true) {
     peak_bar = fwd_bar;
     peak_value = fwd;
   }
@@ -288,7 +293,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   }
   SetTriangle(WHITE , old_peak_bar, 102, old_peak_bar - 4, 108, old_peak_bar + 4, 108);
 
-  show_values = false;
+  update_values = false;
 }
 //--------------------------------------------------------------------------------------------------------
 void band() { //show the used band
@@ -296,7 +301,7 @@ void band() { //show the used band
   String band_value = band_names [band_val];
   band_factor =  band_factors[band_val]; // factor for calculation of fwd and rfl for different bands
 
-  if (old_band != band_value) {
+  if (old_band != band_value || force_update_values == true) {
     old_band = band_value;
     SetFilledRect(BLACK , 370, 25, 100, 16) ;
     ScreenText(WHITE, 370, 25, 2, band_value );
@@ -414,6 +419,7 @@ void encoder_button() { //enter the menue
     //todo:
     if (menue_level == 2 ) {
       menue_level++;
+      force_update_values = true;//force to update values
       tft.fillScreen(BLACK);
     }
     if (menue_level == 1 ) {
@@ -436,7 +442,7 @@ void menue_1() {
   for (int i = 0; i < 8; i++) {
     ScreenText(WHITE, 10, 80 + (20 * i), 2, band_names[i] + ": " + String(band_factors [i], 3));
   }
-  ScreenText(WHITE, 10, 270, 2, "Resistor Divisor: " + String(divisor_factor, DEC));
+  ScreenText(WHITE, 10, 270, 2, "Resistor Divisor: " + String(divisor_factor, 6));
 
   SetLines(WHITE, 180, 80, 180, 235);//Coordinate y
   SetLines(WHITE, 180, 235, 479, 235);//Coordinate x
@@ -457,7 +463,7 @@ void menue_2() {
 
   ScreenText(WHITE, 10, 25, 2, "RAW Sensor Data:");
   SetLines(WHITE, 10, 50, 195, 50);
-  if (show_values == true) {
+  if (update_values == true) {
     int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
     int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
     int batt = analogRead(analog_batt_Pin);  // read from sensor pin value:0-1024
@@ -471,12 +477,12 @@ void menue_2() {
     SetFilledRect(BLACK , 160, 120, 150, 16);
     ScreenText(WHITE, 10, 120, 2 , "Pin:" + String(analog_batt_Pin) + " > A/D: " + String ((batt * to_mV), 1) + " mV");
 
-    show_values = false;
+    update_values = false;
   }
 }
 //--------------------------------------------------------------------------------------------------------
 void timer_interrupt() {
 
-  show_values = true;
+  update_values = true;
 }
 //--------------------------------------------------------------------------------------------------------
