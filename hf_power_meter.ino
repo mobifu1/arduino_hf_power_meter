@@ -348,7 +348,10 @@ void logging(float power) {
 
   for (int i = 227; i >= 0 ; i--) {
     log_values[i + 1] = log_values[i];
-    if (log_values[i] >= 0 && log_values[i] < 1500) SetPoint(RED, 241 + i, 267 - (log_values[i] / 16));
+    if (log_values[i] >= 0 && log_values[i] < 1500) {
+      SetPoint(CYAN, 241 + i, 267 - (log_values[i] / 16));
+      SetPoint(CYAN, 241 + i, 266 - (log_values[i] / 16));
+    }
   }
 }
 //--------------------------------------------------------------------------------------------------------
