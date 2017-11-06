@@ -62,6 +62,8 @@ const float divisor_factor = 5.477 / 1023;//0.005348633;
 const String band_names [8] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 10m"};
 const float band_factors [8] = {1, 1.046, 1.124, 1.175, 1.225, 1.280, 1.350, 1.410}; //160m-10m > // correction of the swr-bridge
 
+int log_values[231] = {};
+
 boolean update_values = false;
 boolean force_update_values = false;
 
@@ -205,6 +207,8 @@ void scale() {
   SetRect(WHITE , 430, 290, 30, 15);//Batterie
   SetFilledRect(WHITE , 460, 295, 5, 5);
 
+  SetRect(WHITE , 240, 170, 230, 100);//Logging
+
   force_update_values = true;
 }
 //--------------------------------------------------------------------------------------------------------
@@ -214,7 +218,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
 
   //Serial.println(String(fwd));
-  //fwd = 836; // 1500W / 160m
+  //fwd = 1023; // 1500W / 160m
   //rfl = 20;
 
   if (fwd > 0 && fwd < 145) { //145 = 0.7V Diode
@@ -250,6 +254,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
       SetFilledRect(BLACK , 40, 120, 60, 8);
       if (rfl > 1)ScreenText(WHITE, 10, 120, 1 , "RFL: " + String (rfl_watt, 1) + " W");
     }
+    logging(fwd_watt);
   }
 
   //fwd bar:
@@ -334,6 +339,17 @@ void batterie() {
   if (voltage_batt < 1150)batt_color = RED;
   if (use_batt == false)batt_color = GREEN;
   SetFilledRect(batt_color , 431, 291, 28, 13);
+}
+//--------------------------------------------------------------------------------------------------------
+void logging(float power) {
+
+  log_values[0] = int(power);
+  SetFilledRect(BLACK , 241, 171, 228, 98);
+
+  for (int i = 227; i >= 0 ; i--) {
+    log_values[i + 1] = log_values[i];
+    if (log_values[i] >= 0 && log_values[i] < 1500) SetPoint(RED, 241 + i, 267 - (log_values[i] / 16));
+  }
 }
 //--------------------------------------------------------------------------------------------------------
 void doEncoderA() {
