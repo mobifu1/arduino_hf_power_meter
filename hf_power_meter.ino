@@ -80,6 +80,7 @@ float old_swr = 0;
 //rotary encoder
 #define encoder0PinA  2
 #define encoder0PinB  3
+#define encoder0PinC  5 //common Pin
 volatile unsigned int encoder0Pos = 0;
 
 //button
@@ -99,6 +100,8 @@ void setup() {
   pinMode (button_Pin, INPUT_PULLUP);
   pinMode(encoder0PinA, INPUT_PULLUP);
   pinMode(encoder0PinB, INPUT_PULLUP);
+  pinMode(encoder0PinC, OUTPUT);
+  digitalWrite(encoder0PinC, LOW);
   attachInterrupt(0, doEncoderA, CHANGE); // encoder pin on interrupt 0 (pin 2)
   attachInterrupt(1, doEncoderB, CHANGE); // encoder pin on interrupt 1 (pin 3)
 
@@ -108,7 +111,7 @@ void setup() {
   tft.setRotation(1);
   tft.fillScreen(BLACK);
   ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter"));// Arduino IDE 1.6.11
-  ScreenText(WHITE, 10, 40 , 2, F("V0.2-Beta"));
+  ScreenText(WHITE, 10, 40 , 2, F("V0.3-Beta"));
   delay(2000);
   tft.fillScreen(BLACK);
   scale();
@@ -349,8 +352,8 @@ void logging(float power) {
   for (int i = 227; i >= 0 ; i--) {
     log_values[i + 1] = log_values[i];
     if (log_values[i] >= 0 && log_values[i] < 1500) {
-      SetPoint(CYAN, 241 + i, 267 - (log_values[i] / 16));
-      SetPoint(CYAN, 241 + i, 266 - (log_values[i] / 16));
+      //SetPoint(CYAN, 241 + i, 267 - (log_values[i] / 16));
+      SetLines(CYAN, 241 + i, 266 - (log_values[i] / 16), 241 + i, 266);
     }
   }
 }
