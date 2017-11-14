@@ -111,7 +111,7 @@ void setup() {
   tft.setRotation(1);
   tft.fillScreen(BLACK);
   ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter"));// Arduino IDE 1.6.11
-  ScreenText(WHITE, 10, 40 , 2, F("V0.3-Beta"));
+  ScreenText(WHITE, 10, 40 , 2, F("V0.4-Beta"));
   delay(2000);
   tft.fillScreen(BLACK);
   scale();
@@ -465,8 +465,13 @@ void encoder_button() { //enter the menue
       tft.fillScreen(BLACK);
     }
     if (menue_level == 0 ) {
-      menue_level++;
-      tft.fillScreen(BLACK);
+      if (old_fwd < 20) {
+        menue_level++;
+        tft.fillScreen(BLACK);
+      }
+      else {
+        peak_value = 0;//this is for, when the hf-transmission starts wihth power over the adjusted limit. You can reset the peak value during the hf-transmission.
+      }
     }
     //todo
     button_status--;
