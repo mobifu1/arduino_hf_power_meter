@@ -90,6 +90,9 @@ int button_status = 0;
 //menue
 int menue_level = 0;
 boolean use_batt = false;
+int menue_2_choose = 0;
+int old_needle_xpos = 0;
+int old_needle_ypos = 0;
 //#########################################################################
 //#########################################################################
 void setup() {
@@ -111,7 +114,7 @@ void setup() {
   tft.setRotation(1);
   tft.fillScreen(BLACK);
   ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter"));// Arduino IDE 1.6.11
-  ScreenText(WHITE, 10, 40 , 2, F("V0.4-Beta"));
+  ScreenText(WHITE, 10, 40 , 2, F("V0.5-Beta"));
   delay(2000);
   tft.fillScreen(BLACK);
   scale();
@@ -353,7 +356,7 @@ void logging(float power) {
     log_values[i + 1] = log_values[i];
     if (log_values[i] >= 0 && log_values[i] < 1500) {
       //SetPoint(CYAN, 241 + i, 267 - (log_values[i] / 16));
-      SetLines(CYAN, 241 + i, 266 - (log_values[i] / 16), 241 + i, 266);
+      SetLines(RED, 241 + i, 266 - (log_values[i] / 16), 241 + i, 266);
     }
   }
 }
@@ -430,7 +433,8 @@ void encoder_turn(boolean enc_direction) {
 
     }
     if (menue_level == 2 ) {
-
+      menue_2_choose++;
+      if (menue_2_choose > 2)menue_2_choose = 0;
     }
   }
   //---------------------------
@@ -443,7 +447,8 @@ void encoder_turn(boolean enc_direction) {
 
     }
     if (menue_level == 2 ) {
-
+      menue_2_choose--;
+      if (menue_2_choose < 0)menue_2_choose = 2;
     }
   }
 }
@@ -520,8 +525,45 @@ void menue_2() {
     SetFilledRect(BLACK , 160, 120, 150, 16);
     ScreenText(WHITE, 10, 120, 2 , "Pin:" + String(analog_batt_Pin) + " > A/D: " + String ((batt * to_mV), 1) + " mV");
 
+    if (menue_2_choose == 0) {
+      SetFilledRect(BLACK , 0, 0, 5, 300);
+      SetFilledCircle(RED , 2, 88, 2);
+      show_needle(float(fwd));
+    }
+    if (menue_2_choose == 1) {
+      SetFilledRect(BLACK , 0, 0, 5, 300);
+      SetFilledCircle(RED , 2, 108, 2);
+      show_needle(float(rfl));
+    }
+    if (menue_2_choose == 2) {
+      SetFilledRect(BLACK , 0, 0, 5, 300);
+      SetFilledCircle(RED , 2, 128, 2);
+      show_needle(float(batt));
+    }
+
     update_values = false;
   }
+}
+//--------------------------------------------------------------------------------------------------------
+void show_needle(float neddle_value) {
+
+  int xoffset = x_edge_right / 2;
+  int yoffset = y_edge_down - 10;
+  //scale:
+  SetRect(WHITE , 90, 160, 300, 159);
+  for (float i = 180; i <= 360; i = i + 15) {
+    int scale_xpos = (cos(i * 0.017453293)  * 125) + xoffset;;
+    int scale_ypos = (sin(i * 0.017453293)  * 125) + yoffset;;
+    SetFilledCircle(GRAY , scale_xpos, scale_ypos, 2);
+  }
+  //calculate needle:
+  float alfa = ((neddle_value * 0.17578125) + 180) * 0.017453293; // pi/180=0.017453293
+  int  needle_xpos = (cos(alfa)  * 120) + xoffset;
+  int needle_ypos = (sin(alfa)  * 120) + yoffset;
+  SetLines(BLACK , xoffset, yoffset, old_needle_xpos, old_needle_ypos);
+  old_needle_xpos = needle_xpos;
+  old_needle_ypos = needle_ypos;
+  SetLines(RED , xoffset, yoffset, needle_xpos, needle_ypos);
 }
 //--------------------------------------------------------------------------------------------------------
 void timer_interrupt() {
