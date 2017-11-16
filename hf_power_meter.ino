@@ -84,7 +84,7 @@ float old_swr = 0;
 volatile unsigned int encoder0Pos = 0;
 
 //button
-int button_Pin = 4; // Connect the Button to Ground and to button_pin
+int button_Pin = 4; // switch the button to ground
 int button_status = 0;
 
 //menue
@@ -113,9 +113,20 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(BLACK);
-  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter"));// Arduino IDE 1.6.11
-  ScreenText(WHITE, 10, 40 , 2, F("V0.5-Beta"));
-  delay(2000);
+  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.5-Beta"));// Arduino IDE 1.6.11
+  ScreenText(WHITE, 10, 40 , 2, F("Max. 1.5kW / Bands: 160m-10m"));
+  ScreenText(WHITE, 10, 70 , 2, F("50 Ohm Coax Cable"));
+  ScreenText(WHITE, 10, 200 , 6, F("DD8ZJ / DL8KX"));
+
+  boolean TickTock = false;
+  for (int i = 16 ; i < x_edge_right - 16; i = i + 16) {
+    TickTock = !TickTock;
+    if (TickTock == false)ScreenText(WHITE, i, 150 , 2, F("-"));
+    if (TickTock == true)ScreenText(WHITE, i, 145 , 2, F("."));
+    delay(100);
+  }
+
+  delay(1000);
   tft.fillScreen(BLACK);
   scale();
 
@@ -485,8 +496,8 @@ void encoder_button() { //enter the menue
 //-------------------------------------------------------------------------------------------------------
 void menue_1() {
 
-  ScreenText(WHITE, 10, 25, 2, "SWR Calibration Factors:");
-  SetLines(WHITE, 10, 50, 290, 50);
+  ScreenText(WHITE, 10, 25, 2, "SWR-Bridge Calibration Factors:");
+  SetLines(WHITE, 10, 50, 375, 50);
   for (int i = 0; i < 8; i++) {
     ScreenText(WHITE, 10, 80 + (20 * i), 2, band_names[i] + ": " + String(band_factors [i], 3));
   }
@@ -547,23 +558,30 @@ void menue_2() {
 //--------------------------------------------------------------------------------------------------------
 void show_needle(float neddle_value) {
 
+  //Position of instrument:
   int xoffset = x_edge_right / 2;
   int yoffset = y_edge_down - 10;
-  //scale:
-  SetRect(WHITE , 90, 160, 300, 159);
-  for (float i = 180; i <= 360; i = i + 15) {
+
+  //scale drawing:
+  SetRect(WHITE , xoffset - 150 , yoffset - 149, 300, 160); //frame
+  for (float i = 180; i <= 360; i = i + 2) {
     int scale_xpos = (cos(i * 0.017453293)  * 125) + xoffset;;
     int scale_ypos = (sin(i * 0.017453293)  * 125) + yoffset;;
-    SetFilledCircle(GRAY , scale_xpos, scale_ypos, 2);
+    if (i <= 360) SetFilledCircle(RED , scale_xpos, scale_ypos, 2); //colored scale
+    if (i < 315) SetFilledCircle(ORANGE , scale_xpos, scale_ypos, 2);
+    if (i < 270) SetFilledCircle(YELLOW , scale_xpos, scale_ypos, 2);
+    if (i < 225)  SetFilledCircle(GREEN , scale_xpos, scale_ypos, 2);
   }
-  //calculate needle:
+
+  //needle calculation:
   float alfa = ((neddle_value * 0.17578125) + 180) * 0.017453293; // pi/180=0.017453293
   int  needle_xpos = (cos(alfa)  * 120) + xoffset;
   int needle_ypos = (sin(alfa)  * 120) + yoffset;
-  SetLines(BLACK , xoffset, yoffset, old_needle_xpos, old_needle_ypos);
+  SetLines(BLACK , xoffset, yoffset, old_needle_xpos, old_needle_ypos); //old needle
   old_needle_xpos = needle_xpos;
   old_needle_ypos = needle_ypos;
-  SetLines(RED , xoffset, yoffset, needle_xpos, needle_ypos);
+  SetLines(RED , xoffset, yoffset, needle_xpos, needle_ypos); //new needle
+  SetFilledCircle(GRAY , xoffset, yoffset, 5); //needle turn point
 }
 //--------------------------------------------------------------------------------------------------------
 void timer_interrupt() {
