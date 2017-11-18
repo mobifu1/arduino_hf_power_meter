@@ -59,8 +59,8 @@ float band_factor = 1;
 // 160m >   10W > P = I * I * 50 Ohm > I = 0.616 A > A/D =  562mV > A/D =  115 bit;
 
 const float divisor_factor = 5.477 / 1023;//0.005348633;
-const String band_names [8] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 10m"};
-const float band_factors [8] = {1, 1.046, 1.124, 1.175, 1.225, 1.280, 1.350, 1.410}; //160m-10m > // correction of the swr-bridge
+const String band_names [9] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 12m", " 10m"};
+const float band_factors [9] = {1, 1.120, 1.314, 1.523, 1.598, 1.700, 1.756, 2.011, 2.311}; //160m-10m > // correction of the swr-bridge
 
 int log_values[231] = {};
 
@@ -438,7 +438,7 @@ void encoder_turn(boolean enc_direction) {
   if (enc_direction == true) { //turn right
     if (menue_level == 0 ) {
       band_val++;
-      if (band_val > 7)band_val = 0;
+      if (band_val > 8)band_val = 0;
     }
     if (menue_level == 1 ) {
 
@@ -452,7 +452,7 @@ void encoder_turn(boolean enc_direction) {
   if (enc_direction == false) { //turn left
     if (menue_level == 0 ) {
       band_val--;
-      if (band_val < 0)band_val = 7;
+      if (band_val < 0)band_val = 8;
     }
     if (menue_level == 1 ) {
 
@@ -498,24 +498,25 @@ void menue_1() {
 
   ScreenText(WHITE, 10, 25, 2, "SWR-Bridge Calibration Factors:");
   SetLines(WHITE, 10, 50, 375, 50);
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 9; i++) {
     ScreenText(WHITE, 10, 80 + (20 * i), 2, band_names[i] + ": " + String(band_factors [i], 3));
   }
-  ScreenText(WHITE, 10, 270, 2, "Divisor: " + String(divisor_factor, DEC));
+  ScreenText(WHITE, 10, 285, 2, "Divisor: " + String(divisor_factor, DEC));
 
   SetLines(WHITE, 180, 80, 180, 235);//Coordinate y
   SetLines(WHITE, 180, 235, 479, 235);//Coordinate x
-  for (int i = 0; i < 8; i++) { //scala X
-    SetLines(WHITE, 180 + (i * 40), 233, 180 + (i * 40), 237);
-    ScreenText(WHITE, 170 + (i * 40), 243, 1, band_names [i]);
+  for (int i = 0; i < 9; i++) { //scala X
+    SetLines(WHITE, 180 + (i * 35), 233, 180 + (i * 35), 237);
+    ScreenText(WHITE, 170 + (i * 35), 243, 1, band_names [i]);
   }
-  SetLines(RED, 181, (100 * band_factors [0]), 220, 100 * band_factors [1]); //160m to 80m
-  SetLines(RED, 220, (100 * band_factors [1]), 260, 100 * band_factors [2]); //80m to 40m
-  SetLines(RED, 260, (100 * band_factors [2]), 300, 100 * band_factors [3]); //40m to 30m
-  SetLines(RED, 300, (100 * band_factors [3]), 340, 100 * band_factors [4]); //30m to 20m
-  SetLines(RED, 340, (100 * band_factors [4]), 380, 100 * band_factors [5]); //20m to 17m
-  SetLines(RED, 380, (100 * band_factors [5]), 420, 100 * band_factors [6]); //17m to 15m
-  SetLines(RED, 420, (100 * band_factors [6]), 460, 100 * band_factors [7]); //15m to 10m
+  SetLines(RED, 181, (100 * band_factors [0]), 216, 100 * band_factors [1]); //160m to 80m
+  SetLines(RED, 216, (100 * band_factors [1]), 251, 100 * band_factors [2]); //80m to 40m
+  SetLines(RED, 251, (100 * band_factors [2]), 286, 100 * band_factors [3]); //40m to 30m
+  SetLines(RED, 286, (100 * band_factors [3]), 321, 100 * band_factors [4]); //30m to 20m
+  SetLines(RED, 321, (100 * band_factors [4]), 356, 100 * band_factors [5]); //20m to 17m
+  SetLines(RED, 356, (100 * band_factors [5]), 391, 100 * band_factors [6]); //17m to 15m
+  SetLines(RED, 391, (100 * band_factors [6]), 426, 100 * band_factors [7]); //15m to 12m
+  SetLines(RED, 426, (100 * band_factors [7]), 461, 100 * band_factors [8]); //12m to 10m
 }
 //-------------------------------------------------------------------------------------------------------
 void menue_2() {
