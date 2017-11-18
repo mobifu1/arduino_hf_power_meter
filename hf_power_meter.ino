@@ -113,7 +113,7 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(BLACK);
-  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.5-Beta"));// Arduino IDE 1.6.11
+  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.6-RC"));// Arduino IDE 1.8.4
   ScreenText(WHITE, 10, 40 , 2, F("Max. 1.5kW / Bands: 160m-10m"));
   ScreenText(WHITE, 10, 70 , 2, F("50 Ohm Coax Cable"));
   ScreenText(WHITE, 10, 200 , 6, F("DD8ZJ / DL8KX"));
@@ -564,7 +564,7 @@ void show_needle(float neddle_value) {
 
   //scale drawing:
   SetRect(WHITE , xoffset - 150 , yoffset - 149, 300, 160); //frame
-  for (float i = 180; i <= 360; i = i + 2) {
+  for (float i = 180; i <= 360; i = i + 4) {
     int scale_xpos = (cos(i * 0.017453293)  * 125) + xoffset;;
     int scale_ypos = (sin(i * 0.017453293)  * 125) + yoffset;;
     if (i <= 360) SetFilledCircle(RED , scale_xpos, scale_ypos, 2); //colored scale
