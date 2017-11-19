@@ -49,7 +49,7 @@ int analog_batt_Pin = A2;
 int band_val = 0;
 float band_factor = 1;
 
-//calculate the incomming dc-voltage from SWR-Bridge in hf-current:
+//calculate the incomming dc-voltage from SWR-Bridge the right hf-current:
 
 // 160m > 1500W > P = I * I * 50 Ohm > I = 5,477 A > A/D = 5000mV > A/D = 1023 bit;
 // 160m > 1000W > P = I * I * 50 Ohm > I = 4.472 A > A/D = 4083mV > A/D =  836 bit;
@@ -57,6 +57,8 @@ float band_factor = 1;
 // 160m >  100W > P = I * I * 50 Ohm > I = 1.414 A > A/D = 1291mV > A/D =  264 bit;
 // 160m >   50W > P = I * I * 50 Ohm > I = 1.000 A > A/D =  913mV > A/D =  187 bit;
 // 160m >   10W > P = I * I * 50 Ohm > I = 0.616 A > A/D =  562mV > A/D =  115 bit;
+
+// R1=130KOhm, R2=27KOhm, V=1:5.815 > (R2=0-50KOhm)
 
 const float divisor_factor = 5.477 / 1023;//0.005348633;
 const String band_names [9] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 12m", " 10m"};
@@ -238,8 +240,8 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   //fwd = 1023; // 1500W / 160m
   //rfl = 20;
 
-  if (fwd > 0 && fwd < 145) { //145 = 0.7V Diode
-    SetFilledTriangle(RED , 200, 290, 192 , 306 , 208 , 306);//291
+  if (fwd > 0 && fwd < 25) { // R1=130KOhm, R2=27KOhm, V=1:5.815 > 0,7V/5.815=120mV = 25bit A/D Diode Limit Voltage  (R2=0-50KOhm)
+    SetFilledTriangle(RED , 200, 290, 192 , 306 , 208 , 306);
     ScreenText(RED, 220, 291, 2 , "Not Exact !");
   }
   else {
