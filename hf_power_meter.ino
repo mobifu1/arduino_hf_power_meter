@@ -43,8 +43,8 @@ const int y_edge_down = 319;
 const float pi = 3.14159265;
 const float to_mV = 4.8828125;
 
-int analog_fwd_Pin = A0;
-int analog_rfl_Pin = A1;
+int analog_fwd_Pin = A1;
+int analog_rfl_Pin = A0;
 int analog_batt_Pin = A2;
 int band_val = 0;
 float band_factor = 1;
@@ -60,14 +60,15 @@ float band_factor = 1;
 
 // R1=130KOhm, R2=27KOhm, V=1:5.815 > (R2=0-50KOhm)
 
-const float divisor_factor = 5.477 / 1023;//0.005348633;
+const float divisor_factor = 0.0107077230;
 const String band_names [9] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 12m", " 10m"};
-const float band_factors [9] = {1, 1.120, 1.314, 1.523, 1.598, 1.700, 1.756, 2.011, 2.311}; //160m-10m > // correction of the swr-bridge
+const float band_factors [9] = {1, 1.023, 1.032, 1.023 , 1.023, 1.056, 1.0, 1.023, 0.980, }; //160m-10m > // correction of the swr-bridge
 
 int log_values[231] = {};
 
 boolean update_values = false;
 boolean force_update_values = false;
+boolean tick = false;
 
 //hf values
 int peak_value = 0;
@@ -75,9 +76,9 @@ int peak_bar = 0;
 int old_peak_bar = 1;
 uint16_t peak_reset = 0;
 int old_band = 0;
-int old_fwd = 0;
-int old_rfl = 0;
-float old_swr = 0;
+//int old_fwd = 0;
+//int old_rfl = 0;
+//float old_swr = 0;
 
 //rotary encoder
 #define encoder0PinA  2
@@ -115,7 +116,7 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(BLACK);
-  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.6-RC"));// Arduino IDE 1.8.4
+  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.7-RC"));// Arduino IDE 1.8.4
   ScreenText(WHITE, 10, 40 , 2, F("Max. 1.5kW / Bands: 160m-10m"));
   ScreenText(WHITE, 10, 70 , 2, F("50 Ohm Coax Cable"));
   ScreenText(WHITE, 10, 200 , 6, F("DD8ZJ / DL8KX"));
@@ -256,26 +257,6 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   if (fwd == 0)peak_reset++;
   if (fwd > 0)peak_reset = 0;
 
-  if (update_values == true || force_update_values == true) {
-    update_values = false;
-    if (old_fwd != fwd || force_update_values == true) {
-      old_fwd = fwd;
-      SetFilledRect(BLACK , 40, 70, 60, 8);
-      if (fwd > 1)ScreenText(WHITE, 10, 70, 1 , "FWD: " + String (fwd_watt, 1) + " W");
-      //dBm calculation
-      double dBm = 30 + (10 * log10(double(fwd_watt)));
-      SetFilledRect(BLACK , 70, 25, 100, 16);
-      if (fwd > 1)ScreenText(WHITE, 70, 25, 2 , String (dBm, 1) + " dBm");
-    }
-
-    if (old_rfl != rfl || force_update_values == true) {
-      old_rfl = rfl;
-      SetFilledRect(BLACK , 40, 120, 60, 8);
-      if (rfl > 1)ScreenText(WHITE, 10, 120, 1 , "RFL: " + String (rfl_watt, 1) + " W");
-    }
-    logging(fwd_watt);
-  }
-
   //fwd bar:
   int fwd_bar = int(fwd_watt * 0.312);
   if (fwd_bar > x_edge_right - 1)fwd_bar = x_edge_right - 1;
@@ -302,17 +283,29 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
     SetFilledRect(rfl_color , y, 131, 5, 8) ;
   }
 
+  //fwd & rfl:
+  if (update_values == true || force_update_values == true) {
+    SetFilledRect(BLACK , 40, 70, 60, 8);
+    ScreenText(WHITE, 10, 70, 1 , "FWD: " + String (fwd_watt, 1) + " W");
+    //dBm calculation
+    double dBm = 30 + (10 * log10(double(fwd_watt)));
+    SetFilledRect(BLACK , 70, 25, 100, 16);
+    if (fwd > 0)ScreenText(WHITE, 70, 25, 2 , String (dBm, 1) + " dBm");
+
+    SetFilledRect(BLACK , 40, 120, 60, 8);
+    ScreenText(WHITE, 10, 120, 1 , "RFL: " + String (rfl_watt, 1) + " W");
+
+    logging(fwd_watt);
+  }
+
   //SWR
   if (update_values == true || force_update_values == true) {
     float swr = (float(fwd) + float(rfl)) / (float(fwd) - float(rfl));
     if (swr > 100)swr = 100;
-    if (old_swr != swr && fwd > 0) {
-      old_swr = swr;
-      if (swr >= 3)SetRect(RED , 10, 218, 145, 40);
-      if (swr < 3)SetRect(BLACK , 10, 218, 145, 40);
-      SetFilledRect(BLACK , 80, 230, 70, 16);
-      ScreenText(WHITE, 20, 230, 2 , "SWR: " + String (swr, 1));
-    }
+    if (swr >= 3)SetRect(RED , 10, 218, 145, 40);
+    if (swr < 3)SetRect(BLACK , 10, 218, 145, 40);
+    SetFilledRect(BLACK , 20, 230, 100, 16);
+    if (fwd > 0)ScreenText(WHITE, 20, 230, 2 , "SWR: " + String (swr, 1));
   }
 
   //Peak Value
@@ -335,6 +328,8 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
     if (peak_value > 1)ScreenText(WHITE, 200, 70, 1, "PEAK: " + String (peak_watt, 1) + " W");
   }
   SetTriangle(WHITE , old_peak_bar, 102, old_peak_bar - 4, 108, old_peak_bar + 4, 108);
+
+  update_values = false;
 }
 //--------------------------------------------------------------------------------------------------------
 void band() { //show the used band
@@ -483,13 +478,8 @@ void encoder_button() { //enter the menue
       tft.fillScreen(BLACK);
     }
     if (menue_level == 0 ) {
-      if (old_fwd < 20) {
-        menue_level++;
-        tft.fillScreen(BLACK);
-      }
-      else {
-        peak_value = 0;//this is for, when the hf-transmission starts wihth power over the adjusted limit. You can reset the peak value during the hf-transmission.
-      }
+      menue_level++;
+      tft.fillScreen(BLACK);
     }
     //todo
     button_status--;
@@ -590,5 +580,8 @@ void show_needle(float neddle_value) {
 void timer_interrupt() {
 
   update_values = true;
+  tick = !tick;
+  if (tick == false) SetFilledCircle(BLACK , 2, 2, 2);
+  if (tick == true) SetFilledCircle(WHITE , 2, 2, 2);
 }
 //--------------------------------------------------------------------------------------------------------
