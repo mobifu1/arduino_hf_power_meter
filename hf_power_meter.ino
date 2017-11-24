@@ -12,7 +12,7 @@
    Original header is at the end of the sketch, some text in it is
    not applicable to the HX8357 display supported by this example.
 
-    HF-Power Meter: 100-1500 Watt
+    HF-Power Meter: 100-2000 Watt
     10 W = 0.4472 A an 50 Ohm  > P=(I*I)*R
     Die ausgekoppelte FWD Spannung ist dem HF-Strom proportional.
 */
@@ -51,14 +51,14 @@ float band_factor = 1;
 
 //calculate the incomming dc-voltage from SWR-Bridge the right hf-current:
 
-// 160m > 1500W > P = I * I * 50 Ohm > I = 5,477 A > A/D = 5000mV > A/D = 1023 bit;
-// 160m > 1000W > P = I * I * 50 Ohm > I = 4.472 A > A/D = 4083mV > A/D =  836 bit;
-// 160m >  500W > P = I * I * 50 Ohm > I = 3.162 A > A/D = 2887mV > A/D =  591 bit;
-// 160m >  100W > P = I * I * 50 Ohm > I = 1.414 A > A/D = 1291mV > A/D =  264 bit;
-// 160m >   50W > P = I * I * 50 Ohm > I = 1.000 A > A/D =  913mV > A/D =  187 bit;
-// 160m >   10W > P = I * I * 50 Ohm > I = 0.616 A > A/D =  562mV > A/D =  115 bit;
+// 160m > 1500W > P = I * I * 50 Ohm > I = 5,477 A > A/D = 2500mV > A/D = 512 bit;
+// 160m > 1000W > P = I * I * 50 Ohm > I = 4.472 A > A/D = 2041mV > A/D =  418 bit;
+// 160m >  500W > P = I * I * 50 Ohm > I = 3.162 A > A/D = 1444mV > A/D =  296 bit;
+// 160m >  100W > P = I * I * 50 Ohm > I = 1.414 A > A/D =  645mV > A/D =  132 bit;
+// 160m >   50W > P = I * I * 50 Ohm > I = 1.000 A > A/D =  456mV > A/D =   93 bit;
+// 160m >   10W > P = I * I * 50 Ohm > I = 0.616 A > A/D =  281mV > A/D =   57 bit;
 
-// R1=130KOhm, R2=27KOhm, V=1:5.815 > (R2=0-50KOhm)
+// R1=130KOhm, R2=38KOhm, V=1:3.42 > (R2=0-50KOhm)
 
 const float divisor_factor = 0.0107077230;
 const String band_names [9] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 12m", " 10m"};
@@ -76,9 +76,6 @@ int peak_bar = 0;
 int old_peak_bar = 1;
 uint16_t peak_reset = 0;
 int old_band = 0;
-//int old_fwd = 0;
-//int old_rfl = 0;
-//float old_swr = 0;
 
 //rotary encoder
 #define encoder0PinA  2
@@ -116,8 +113,8 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(BLACK);
-  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.7-RC"));// Arduino IDE 1.8.4
-  ScreenText(WHITE, 10, 40 , 2, F("Max. 1.5kW / Bands: 160m-10m"));
+  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.8-RC"));// Arduino IDE 1.8.4
+  ScreenText(WHITE, 10, 40 , 2, F("Max. 2.0 kW / Bands: 160m-10m"));
   ScreenText(WHITE, 10, 70 , 2, F("50 Ohm Coax Cable"));
   ScreenText(WHITE, 10, 200 , 6, F("DD8ZJ / DL8KX"));
 
@@ -237,11 +234,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
   int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
 
-  //Serial.println(String(fwd));
-  //fwd = 1023; // 1500W / 160m
-  //rfl = 20;
-
-  if (fwd > 0 && fwd < 25) { // R1=130KOhm, R2=27KOhm, V=1:5.815 > 0,7V/5.815=120mV = 25bit A/D Diode Limit Voltage  (R2=0-50KOhm)
+  if (fwd > 0 && fwd < 43) { // R1=130KOhm, R2=38KOhm, V=1:3.42  > 0,7V/3.42=204mV = 42bit A/D Diode Limit Voltage  (R2=0-50KOhm)
     SetFilledTriangle(RED , 200, 290, 192 , 306 , 208 , 306);
     ScreenText(RED, 220, 291, 2 , "Not Exact !");
   }
@@ -313,7 +306,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
     peak_bar = fwd_bar;
     peak_value = fwd;
   }
-  if (peak_reset > 150) {
+  if (peak_reset > 150) {//delay to clear the peak value
     peak_reset = 0;
     peak_bar = 1;
     peak_value = 0;
@@ -397,7 +390,6 @@ void doEncoderA() {
     }
   }
   //Serial.println (encoder0Pos, DEC);
-  // use for debugging - remember to comment out
 }
 //--------------------------------------------------------------------------------------------------------
 void doEncoderB() {
@@ -481,7 +473,6 @@ void encoder_button() { //enter the menue
       menue_level++;
       tft.fillScreen(BLACK);
     }
-    //todo
     button_status--;
   }
 }
@@ -580,8 +571,5 @@ void show_needle(float neddle_value) {
 void timer_interrupt() {
 
   update_values = true;
-  //  tick = !tick;
-  //  if (tick == false) SetFilledCircle(BLACK , 2, 2, 2);
-  //  if (tick == true) SetFilledCircle(WHITE , 2, 2, 2);
 }
 //--------------------------------------------------------------------------------------------------------
