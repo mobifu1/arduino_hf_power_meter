@@ -580,8 +580,8 @@ void show_needle(float neddle_value) {
 void timer_interrupt() {
 
   update_values = true;
-  tick = !tick;
-  if (tick == false) SetFilledCircle(BLACK , 2, 2, 2);
-  if (tick == true) SetFilledCircle(WHITE , 2, 2, 2);
+  //  tick = !tick;
+  //  if (tick == false) SetFilledCircle(BLACK , 2, 2, 2);
+  //  if (tick == true) SetFilledCircle(WHITE , 2, 2, 2);
 }
 //--------------------------------------------------------------------------------------------------------
