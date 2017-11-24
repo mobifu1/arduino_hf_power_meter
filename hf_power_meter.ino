@@ -12,7 +12,7 @@
    Original header is at the end of the sketch, some text in it is
    not applicable to the HX8357 display supported by this example.
 
-    HF-Power Meter: 100-2000 Watt
+    HF-Power Meter: 100-1500 Watt
     10 W = 0.4472 A an 50 Ohm  > P=(I*I)*R
     Die ausgekoppelte FWD Spannung ist dem HF-Strom proportional.
 */
@@ -52,11 +52,11 @@ float band_factor = 1;
 //calculate the incomming dc-voltage from SWR-Bridge the right hf-current:
 
 // 160m > 1500W > P = I * I * 50 Ohm > I = 5,477 A > A/D = 2500mV > A/D = 512 bit;
-// 160m > 1000W > P = I * I * 50 Ohm > I = 4.472 A > A/D = 2041mV > A/D =  418 bit;
-// 160m >  500W > P = I * I * 50 Ohm > I = 3.162 A > A/D = 1444mV > A/D =  296 bit;
-// 160m >  100W > P = I * I * 50 Ohm > I = 1.414 A > A/D =  645mV > A/D =  132 bit;
-// 160m >   50W > P = I * I * 50 Ohm > I = 1.000 A > A/D =  456mV > A/D =   93 bit;
-// 160m >   10W > P = I * I * 50 Ohm > I = 0.616 A > A/D =  281mV > A/D =   57 bit;
+// 160m > 1000W > P = I * I * 50 Ohm > I = 4.472 A > A/D = 2041mV > A/D = 418 bit;
+// 160m >  500W > P = I * I * 50 Ohm > I = 3.162 A > A/D = 1444mV > A/D = 296 bit;
+// 160m >  100W > P = I * I * 50 Ohm > I = 1.414 A > A/D =  645mV > A/D = 132 bit;
+// 160m >   50W > P = I * I * 50 Ohm > I = 1.000 A > A/D =  456mV > A/D =  93 bit;
+// 160m >   10W > P = I * I * 50 Ohm > I = 0.616 A > A/D =  281mV > A/D =  57 bit;
 
 // R1=130KOhm, R2=38KOhm, V=1:3.42 > (R2=0-50KOhm)
 
@@ -113,8 +113,8 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(BLACK);
-  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.8-RC"));// Arduino IDE 1.8.4
-  ScreenText(WHITE, 10, 40 , 2, F("Max. 2.0 kW / Bands: 160m-10m"));
+  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.8-R"));// Arduino IDE 1.8.4
+  ScreenText(WHITE, 10, 40 , 2, F("Max. 1.5 kW / Bands: 160m-10m"));
   ScreenText(WHITE, 10, 70 , 2, F("50 Ohm Coax Cable"));
   ScreenText(WHITE, 10, 200 , 6, F("DD8ZJ / DL8KX"));
 
