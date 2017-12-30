@@ -60,7 +60,9 @@ float band_factor = 1;
 
 // R1=130KOhm, R2=38KOhm, V=1:3.42 > (R2=0-50KOhm)
 
-const float divisor_factor = 0.0107077230;
+const float divisor_factor = 0.045643546;
+const float impedance = 50;//ohm
+const float sqr2 = 1.414213562;
 const String band_names [9] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 12m", " 10m"};
 const float band_factors [9] = {1, 1.023, 1.032, 1.023 , 1.023, 1.056, 1.0, 1.023, 0.980, }; //160m-10m > // correction of the swr-bridge
 
@@ -113,7 +115,7 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(BLACK);
-  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.8-R"));// Arduino IDE 1.8.4
+  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.9-Beta"));// Arduino IDE 1.8.4
   ScreenText(WHITE, 10, 40 , 2, F("Max. 1.5 kW / Bands: 160m-10m"));
   ScreenText(WHITE, 10, 70 , 2, F("50 Ohm Coax Cable"));
   ScreenText(WHITE, 10, 200 , 6, F("DD8ZJ / DL8KX"));
@@ -208,6 +210,22 @@ void SetFilledTriangle(uint16_t color , int xpeak, int ypeak, int xbottom_left, 
   tft.fillTriangle(xpeak, ypeak, xbottom_left, ybottom_left, xbottom_right, ybottom_right, color);
 }
 //--------------------------------------------------------------------------------------------------------
+float calc_hf_power(float voltage) { //calculate hf-power from voltage output of swr-bridge   30W = 517 = 2,5V
+
+  //Example:  http://www.akadns.de/dl/20140909/Vortrag_Darc_OVF07.pdf
+
+  //SWRMeter_100.bas:
+  //eff voltage  = peak voltage / SQR(2)
+  //eff. power   = (eff. voltage)^2 / impedance
+
+  float voltage_eff;
+  float power;
+
+  voltage_eff = voltage / sqr2;
+  power = (voltage_eff * voltage_eff) / impedance;
+  return power;
+}
+//--------------------------------------------------------------------------------------------------------
 void scale() {
 
   SetRect(WHITE , x_edge_left, 80, x_edge_right, 20);  //FWD
@@ -244,8 +262,9 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
 
   float fwd_float = float(fwd) * band_factor * divisor_factor;
   float rfl_float = float(rfl) * band_factor * divisor_factor;
-  float fwd_watt = fwd_float * fwd_float * 50;
-  float rfl_watt = rfl_float * rfl_float * 50;
+
+  float  fwd_watt = calc_hf_power(fwd_float);
+  float  rfl_watt = calc_hf_power(fwd_float);
 
   if (fwd == 0)peak_reset++;
   if (fwd > 0)peak_reset = 0;
