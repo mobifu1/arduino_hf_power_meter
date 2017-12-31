@@ -336,7 +336,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
     old_peak_bar = peak_bar;
     float peak_float = float(peak_value) * band_factor * divisor_factor; //value:0-470
     float peak_watt = peak_float * peak_float * 50;
-    SetFilledRect(BLACK , 230, 70, 60, 8);
+    SetFilledRect(BLACK , 230, 70, 100, 8);
     if (peak_value > 1)ScreenText(WHITE, 200, 70, 1, "PEAK: " + String (peak_watt, 1) + " W");
   }
   SetTriangle(WHITE , old_peak_bar, 102, old_peak_bar - 4, 108, old_peak_bar + 4, 108);
