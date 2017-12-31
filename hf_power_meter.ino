@@ -60,7 +60,7 @@ float band_factor = 1;
 
 // R1=130KOhm, R2=38KOhm, V=1:3.42 > (R2=0-50KOhm)
 
-const float divisor_factor = 0.045643546;
+const float divisor_factor = 0.8175;
 const float impedance = 50;//ohm
 const float sqr2 = 1.414213562;
 const String band_names [9] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 12m", " 10m"};
