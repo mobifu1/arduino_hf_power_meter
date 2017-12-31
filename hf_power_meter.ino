@@ -73,7 +73,6 @@ boolean force_update_values = false;
 boolean tick = false;
 
 //hf values
-int peak_value = 0;
 int peak_bar = 0;
 int old_peak_bar = 1;
 uint16_t peak_reset = 0;
@@ -321,23 +320,22 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   }
 
   //Peak Value
+  float peak_watt = 0;
   if (fwd_bar > peak_bar || force_update_values == true) {
     peak_bar = fwd_bar;
-    peak_value = fwd;
+    peak_watt = fwd_watt;
   }
   if (peak_reset > 150) {//delay to clear the peak value
     peak_reset = 0;
     peak_bar = 1;
-    peak_value = 0;
+    peak_watt = 0;
   }
   if (peak_bar > 475) peak_bar = 475;
   if (old_peak_bar != peak_bar) {
     SetTriangle(BLACK , old_peak_bar, 102, old_peak_bar - 4, 108, old_peak_bar + 4, 108);
     old_peak_bar = peak_bar;
-    float peak_float = float(peak_value) * band_factor * divisor_factor; //value:0-470
-    float peak_watt = peak_float * peak_float * 50;
-    SetFilledRect(BLACK , 230, 70, 100, 8);
-    if (peak_value > 1)ScreenText(WHITE, 200, 70, 1, "PEAK: " + String (peak_watt, 1) + " W");
+    SetFilledRect(BLACK , 230, 70, 60, 8);
+    if (peak_watt > 1)ScreenText(WHITE, 200, 70, 1, "PEAK: " + String (peak_watt, 1) + " W");
   }
   SetTriangle(WHITE , old_peak_bar, 102, old_peak_bar - 4, 108, old_peak_bar + 4, 108);
 
