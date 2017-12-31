@@ -264,7 +264,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   float rfl_float = float(rfl) * band_factor * divisor_factor;
 
   float  fwd_watt = calc_hf_power(fwd_float);
-  float  rfl_watt = calc_hf_power(fwd_float);
+  float  rfl_watt = calc_hf_power(rfl_float);
 
   if (fwd == 0)peak_reset++;
   if (fwd > 0)peak_reset = 0;
