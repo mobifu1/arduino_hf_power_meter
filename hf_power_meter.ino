@@ -60,8 +60,8 @@ float band_factor = 1;
 
 // R1=130KOhm, R2=38KOhm, V=1:3.42 > (R2=0-50KOhm)
 
-const float divisor_factor = 0.8175;
-const float impedance = 50;//ohm
+const float divisor_factor = 0.765;
+const float impedance = 50;// 50 Ohm
 const float sqr2 = 1.414213562;
 const String band_names [9] = {"160m", " 80m", " 40m", " 30m", " 20m", " 17m", " 15m", " 12m", " 10m"};
 const float band_factors [9] = {1, 1.023, 1.032, 1.023 , 1.023, 1.056, 1.0, 1.023, 0.980, }; //160m-10m > // correction of the swr-bridge
@@ -77,6 +77,9 @@ int peak_bar = 0;
 int old_peak_bar = 1;
 uint16_t peak_reset = 0;
 int old_band = 0;
+int old_fwd = 0;
+int old_rfl = 0;
+int smart_fade_out = 5;
 
 //rotary encoder
 #define encoder0PinA  2
@@ -209,13 +212,12 @@ void SetFilledTriangle(uint16_t color , int xpeak, int ypeak, int xbottom_left, 
   tft.fillTriangle(xpeak, ypeak, xbottom_left, ybottom_left, xbottom_right, ybottom_right, color);
 }
 //--------------------------------------------------------------------------------------------------------
-float calc_hf_power(float voltage) { //calculate hf-power from voltage output of swr-bridge   30W = 517 = 2,5V
+float calc_hf_power(float voltage) { //calculate hf-power from voltage output of swr-bridge
 
-  //Example:  http://www.akadns.de/dl/20140909/Vortrag_Darc_OVF07.pdf
-
-  //SWRMeter_100.bas:
-  //eff voltage  = peak voltage / SQR(2)
-  //eff. power   = (eff. voltage)^2 / impedance
+  // http://www.walterzorn.de/grapher/grapher.htm
+  // ((x*0.8175)/sqr(2))²/ 50;
+  // ((x*0.765)/sqr(2))² / 50;
+  // ((x*0.715)/sqr(2))² / 50;
 
   float voltage_eff;
   float power;
@@ -251,6 +253,24 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
   int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
 
+  //------smart fade out:-----------------------
+  if (fwd < 2 && old_fwd > smart_fade_out) {
+    old_fwd -= smart_fade_out;
+    fwd = old_fwd;
+  }
+  else {
+    old_fwd = fwd;
+  }
+
+  if (rfl < 2 && old_rfl > smart_fade_out) {
+    old_rfl -= smart_fade_out;
+    rfl = old_rfl;
+  }
+  else {
+    old_rfl = rfl;
+  }
+  //----------------------------------------------
+
   if (fwd > 0 && fwd < 43) { // R1=130KOhm, R2=38KOhm, V=1:3.42  > 0,7V/3.42=204mV = 42bit A/D Diode Limit Voltage  (R2=0-50KOhm)
     SetFilledTriangle(RED , 200, 290, 192 , 306 , 208 , 306);
     ScreenText(RED, 220, 291, 2 , "Not Exact !");
@@ -264,6 +284,7 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
 
   float  fwd_watt = calc_hf_power(fwd_float);
   float  rfl_watt = calc_hf_power(rfl_float);
+
 
   if (fwd == 0)peak_reset++;
   if (fwd > 0)peak_reset = 0;
