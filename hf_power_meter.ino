@@ -117,7 +117,7 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(BLACK);
-  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V0.9-Beta"));// Arduino IDE 1.8.4
+  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V1.0-R"));// Arduino IDE 1.8.4
   ScreenText(WHITE, 10, 40 , 2, F("Max. 1.5 kW / Bands: 160m-10m"));
   ScreenText(WHITE, 10, 70 , 2, F("50 Ohm Coax Cable"));
   ScreenText(WHITE, 10, 200 , 6, F("DD8ZJ / DL8KX"));
