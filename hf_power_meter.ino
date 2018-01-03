@@ -97,6 +97,10 @@ boolean use_batt = false;
 int menue_2_choose = 0;
 int old_needle_xpos = 0;
 int old_needle_ypos = 0;
+int old_needle_left_xpos = 0;
+int old_needle_left_ypos = 0;
+int old_needle_right_xpos = 0;
+int old_needle_right_ypos = 0;
 //#########################################################################
 //#########################################################################
 void setup() {
@@ -117,7 +121,7 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(BLACK);
-  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V1.0-R"));// Arduino IDE 1.8.4
+  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V1.1-Beta"));// Arduino IDE 1.8.4
   ScreenText(WHITE, 10, 40 , 2, F("Max. 1.5 kW / Bands: 160m-10m"));
   ScreenText(WHITE, 10, 70 , 2, F("50 Ohm Coax Cable"));
   ScreenText(WHITE, 10, 200 , 6, F("DD8ZJ / DL8KX"));
@@ -156,7 +160,11 @@ void loop() {
     force_update_values = false;//force to update values
   }
   if (menue_level == 1) {
-    menue_1();
+    int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
+    int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
+    fwd *= 0.8;
+    rfl *= 0.8;
+    show_cross_needle(rfl, fwd);
     encoder_button();
   }
   if (menue_level == 2) {
@@ -164,6 +172,10 @@ void loop() {
     encoder_button();
   }
   if (menue_level == 3) {
+    menue_3();
+    encoder_button();
+  }
+  if (menue_level == 4) {
     menue_level = 0;
     scale();
   }
@@ -498,9 +510,13 @@ void encoder_button() { //enter the menue
   if (button_val == LOW & button_status == 0)button_status++;
   if (button_val == HIGH & button_status == 1) {
     //todo:
-    if (menue_level == 2 ) {
+    if (menue_level == 3 ) {
       menue_level++;
       force_update_values = true;//force to update values
+      tft.fillScreen(BLACK);
+    }
+    if (menue_level == 2 ) {
+      menue_level++;
       tft.fillScreen(BLACK);
     }
     if (menue_level == 1 ) {
@@ -515,7 +531,7 @@ void encoder_button() { //enter the menue
   }
 }
 //-------------------------------------------------------------------------------------------------------
-void menue_1() {
+void menue_2() {
 
   ScreenText(WHITE, 10, 25, 2, "SWR-Bridge Calibration Factors:");
   SetLines(WHITE, 10, 50, 375, 50);
@@ -540,7 +556,7 @@ void menue_1() {
   SetLines(RED, 426, (100 * band_factors [7]), 461, 100 * band_factors [8]); //12m to 10m
 }
 //-------------------------------------------------------------------------------------------------------
-void menue_2() {
+void menue_3() {
 
   ScreenText(WHITE, 10, 25, 2, "RAW Sensor Data:");
   SetLines(WHITE, 10, 50, 195, 50);
@@ -604,6 +620,55 @@ void show_needle(float neddle_value) {
   old_needle_ypos = needle_ypos;
   SetLines(RED , xoffset, yoffset, needle_xpos, needle_ypos); //new needle
   SetFilledCircle(GRAY , xoffset, yoffset, 5); //needle turn point
+}
+//--------------------------------------------------------------------------------------------------------
+void show_cross_needle(float neddle_left_value, float neddle_right_value) { //show swr
+
+  //Position of instrument:
+  int xoffset_left = x_edge_left + 140;
+  int xoffset_right = x_edge_right - 140;
+  int yoffset = y_edge_down - 10;
+
+  //scale drawing:
+  SetRect(WHITE , x_edge_left , y_edge_up, x_edge_right, y_edge_down); //frame
+  SetLines(GREEN , x_edge_right / 2 , y_edge_down - 22, 415, 242); //swr=1,2
+  ScreenText(WHITE, 20, 50, 2 , "FWD");
+  ScreenText(WHITE, 420, 50, 2 , "RFL");
+  ScreenText(WHITE, 430, 235, 1 , "1.2 SWR");
+
+  //left scale:
+  for (float i = 270; i <= 355; i = i + 4) {
+    int scale_xpos = (cos(i * 0.017453293) * 290) + xoffset_left;
+    int scale_ypos = (sin(i * 0.017453293) * 290) + yoffset;
+    SetFilledCircle(WHITE , scale_xpos, scale_ypos, 2);
+  }
+
+  //right scale
+  for (float i = 185; i <= 270; i = i + 4) {
+    int scale_xpos = (cos(i * 0.017453293) * 290) + xoffset_right;
+    int scale_ypos = (sin(i * 0.017453293) * 290) + yoffset;
+    SetFilledCircle(WHITE , scale_xpos, scale_ypos, 2);
+  }
+
+  //turn left needle calculation:
+  float alfa_left = (355 - (neddle_left_value * 0.17578125)) * 0.017453293; // pi/180=0.017453293
+  int needle_left_xpos = (cos(alfa_left) * 285) + xoffset_left;
+  int needle_left_ypos = (sin(alfa_left) * 285) + yoffset;
+  SetLines(BLACK , xoffset_left, yoffset, old_needle_left_xpos, old_needle_left_ypos); //old needle
+  old_needle_left_xpos = needle_left_xpos;
+  old_needle_left_ypos = needle_left_ypos;
+  SetLines(RED , xoffset_left, yoffset, needle_left_xpos, needle_left_ypos); //new needle
+  SetFilledCircle(GRAY , xoffset_left, yoffset, 5); //needle turn point
+
+  //turn right needle calculation:
+  float alfa_right = ((neddle_right_value * 0.17578125) + 185) * 0.017453293; // pi/180=0.017453293
+  int needle_right_xpos = (cos(alfa_right) * 285) + xoffset_right;
+  int needle_right_ypos = (sin(alfa_right) * 285) + yoffset;
+  SetLines(BLACK , xoffset_right, yoffset, old_needle_right_xpos, old_needle_right_ypos); //old needle
+  old_needle_right_xpos = needle_right_xpos;
+  old_needle_right_ypos = needle_right_ypos;
+  SetLines(RED , xoffset_right, yoffset, needle_right_xpos, needle_right_ypos); //new needle
+  SetFilledCircle(GRAY , xoffset_right, yoffset, 5); //needle turn point
 }
 //--------------------------------------------------------------------------------------------------------
 void timer_interrupt() {
