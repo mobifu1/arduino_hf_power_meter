@@ -48,6 +48,8 @@ int analog_rfl_Pin = A0;
 int analog_batt_Pin = A2;
 int band_val = 0;
 float band_factor = 1;
+const float pi_div_180 = 0.17578125; //pi / 180
+const float swr_warning = 1.2;
 
 //calculate the incomming dc-voltage from SWR-Bridge the right hf-current:
 
@@ -154,18 +156,15 @@ void loop() {
 
   if (menue_level == 0) {
     band();
-    hf_power();
+    hf_power_digital();
     batterie();
     encoder_button();
     force_update_values = false;//force to update values
   }
   if (menue_level == 1) {
-    int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
-    int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
-    fwd *= 0.8;
-    rfl *= 0.8;
-    show_cross_needle(rfl, fwd);
+    hf_power_analog();
     encoder_button();
+    force_update_values = false;//force to update values
   }
   if (menue_level == 2) {
     menue_2();
@@ -260,7 +259,7 @@ void scale() {
   force_update_values = true;
 }
 //--------------------------------------------------------------------------------------------------------
-void hf_power() {  //show FWD / RFL / SWR / Peak-Power
+void hf_power_digital() {  //show FWD / RFL / SWR / Peak-Power
 
   int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
   int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
@@ -302,7 +301,8 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   if (fwd > 0)peak_reset = 0;
 
   //fwd bar:
-  int fwd_bar = int(fwd_watt * 0.312);
+  //int fwd_bar = int(fwd_watt * 0.312);
+  int fwd_bar = int(fwd_float);
   if (fwd_bar > x_edge_right - 1)fwd_bar = x_edge_right - 1;
   uint16_t fwd_color;
   for (int i = 2; i < x_edge_right - 6; i += 6) {
@@ -315,7 +315,8 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   }
 
   //rfl bar:
-  int rfl_bar = int(rfl_watt * 0.312);
+  //int rfl_bar = int(rfl_watt * 0.312);
+  int rfl_bar = int(rfl_float);
   if (rfl_bar > x_edge_right - 1)rfl_bar = x_edge_right - 1;
   uint16_t rfl_color;
   for (int y = 2; y < x_edge_right - 6; y += 6) {
@@ -344,12 +345,12 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
 
   //SWR
   if (update_values == true || force_update_values == true) {
-    float swr = (float(fwd) + float(rfl)) / (float(fwd) - float(rfl));
+    float swr = (fwd_float + rfl_float) / (fwd_float - rfl_float);
     if (swr > 100)swr = 100;
-    if (swr >= 3)SetRect(RED , 10, 218, 145, 40);
-    if (swr < 3)SetRect(BLACK , 10, 218, 145, 40);
+    if (swr > swr_warning)SetRect(RED , 10, 218, 145, 40);
+    if (swr <= swr_warning)SetRect(BLACK , 10, 218, 145, 40);
     SetFilledRect(BLACK , 20, 230, 100, 16);
-    if (fwd > 0)ScreenText(WHITE, 20, 230, 2 , "SWR: " + String (swr, 1));
+    if (fwd_float > 0)ScreenText(WHITE, 20, 230, 2 , "SWR: " + String (swr, 1));
   }
 
   //Peak Value
@@ -373,6 +374,45 @@ void hf_power() {  //show FWD / RFL / SWR / Peak-Power
   SetTriangle(WHITE , old_peak_bar, 102, old_peak_bar - 4, 108, old_peak_bar + 4, 108);
 
   update_values = false;
+}
+//--------------------------------------------------------------------------------------------------------
+void hf_power_analog() {  //show FWD / RFL / SWR on cross needles
+
+  int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
+  int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
+
+  //------smart fade out:-----------------------
+  if (fwd < 2 && old_fwd > smart_fade_out) {
+    old_fwd -= smart_fade_out;
+    fwd = old_fwd;
+  }
+  else {
+    old_fwd = fwd;
+  }
+
+  if (rfl < 2 && old_rfl > smart_fade_out) {
+    old_rfl -= smart_fade_out;
+    rfl = old_rfl;
+  }
+  else {
+    old_rfl = rfl;
+  }
+  //----------------------------------------------
+
+  float fwd_float = float(fwd) * band_factor * divisor_factor;
+  float rfl_float = float(rfl) * band_factor * divisor_factor;
+
+  show_cross_needle(rfl_float, fwd_float);
+
+  //swr
+  if (update_values == true || force_update_values == true) {
+    float swr = (fwd_float + rfl_float) / (fwd_float - rfl_float);
+    if (swr > 100)swr = 100;
+    if (swr > swr_warning)SetRect(RED , 10, 218, 145, 40);
+    if (swr <= swr_warning)SetRect(BLACK , 10, 218, 145, 40);
+    SetFilledRect(BLACK , 20, 230, 100, 16);
+    if (fwd_float > 0)ScreenText(WHITE, 20, 230, 2 , "SWR: " + String (swr, 1));
+  }
 }
 //--------------------------------------------------------------------------------------------------------
 void band() { //show the used band
@@ -603,8 +643,8 @@ void show_needle(float neddle_value) {
   //scale drawing:
   SetRect(WHITE , xoffset - 150 , yoffset - 149, 300, 160); //frame
   for (float i = 180; i <= 360; i = i + 4) {
-    int scale_xpos = (cos(i * 0.017453293)  * 125) + xoffset;;
-    int scale_ypos = (sin(i * 0.017453293)  * 125) + yoffset;;
+    int scale_xpos = (cos(i * pi_div_180)  * 125) + xoffset;;
+    int scale_ypos = (sin(i * pi_div_180)  * 125) + yoffset;;
     if (i <= 360) SetFilledCircle(RED , scale_xpos, scale_ypos, 2); //colored scale
     if (i < 315) SetFilledCircle(ORANGE , scale_xpos, scale_ypos, 2);
     if (i < 270) SetFilledCircle(YELLOW , scale_xpos, scale_ypos, 2);
@@ -612,7 +652,7 @@ void show_needle(float neddle_value) {
   }
 
   //needle calculation:
-  float alfa = ((neddle_value * 0.17578125) + 180) * 0.017453293; // pi/180=0.017453293
+  float alfa = ((neddle_value * 0.17578125) + 180) * pi_div_180; // pi/180=0.017453293
   int  needle_xpos = (cos(alfa)  * 120) + xoffset;
   int needle_ypos = (sin(alfa)  * 120) + yoffset;
   SetLines(BLACK , xoffset, yoffset, old_needle_xpos, old_needle_ypos); //old needle
@@ -631,27 +671,27 @@ void show_cross_needle(float neddle_left_value, float neddle_right_value) { //sh
 
   //scale drawing:
   SetRect(WHITE , x_edge_left , y_edge_up, x_edge_right, y_edge_down); //frame
-  SetLines(GREEN , x_edge_right / 2 , y_edge_down - 22, 415, 242); //swr=1,2
+  //SetLines(GREEN , x_edge_right / 2 , y_edge_down - 22, 415, 242); //swr=1,2
   ScreenText(WHITE, 20, 50, 2 , "FWD");
   ScreenText(WHITE, 420, 50, 2 , "RFL");
-  ScreenText(WHITE, 430, 235, 1 , "1.2 SWR");
+  //ScreenText(WHITE, 430, 235, 1 , "1.2 SWR");
 
   //left scale:
   for (float i = 270; i <= 355; i = i + 4) {
-    int scale_xpos = (cos(i * 0.017453293) * 290) + xoffset_left;
-    int scale_ypos = (sin(i * 0.017453293) * 290) + yoffset;
+    int scale_xpos = (cos(i * pi_div_180) * 290) + xoffset_left;
+    int scale_ypos = (sin(i * pi_div_180) * 290) + yoffset;
     SetFilledCircle(WHITE , scale_xpos, scale_ypos, 2);
   }
 
-  //right scale
+  //right scale:
   for (float i = 185; i <= 270; i = i + 4) {
-    int scale_xpos = (cos(i * 0.017453293) * 290) + xoffset_right;
-    int scale_ypos = (sin(i * 0.017453293) * 290) + yoffset;
+    int scale_xpos = (cos(i * pi_div_180) * 290) + xoffset_right;
+    int scale_ypos = (sin(i * pi_div_180) * 290) + yoffset;
     SetFilledCircle(WHITE , scale_xpos, scale_ypos, 2);
   }
 
   //turn left needle calculation:
-  float alfa_left = (355 - (neddle_left_value * 0.17578125)) * 0.017453293; // pi/180=0.017453293
+  float alfa_left = (355 - (neddle_left_value * 0.17578125)) * pi_div_180; // pi/180=0.017453293
   int needle_left_xpos = (cos(alfa_left) * 285) + xoffset_left;
   int needle_left_ypos = (sin(alfa_left) * 285) + yoffset;
   SetLines(BLACK , xoffset_left, yoffset, old_needle_left_xpos, old_needle_left_ypos); //old needle
@@ -661,7 +701,7 @@ void show_cross_needle(float neddle_left_value, float neddle_right_value) { //sh
   SetFilledCircle(GRAY , xoffset_left, yoffset, 5); //needle turn point
 
   //turn right needle calculation:
-  float alfa_right = ((neddle_right_value * 0.17578125) + 185) * 0.017453293; // pi/180=0.017453293
+  float alfa_right = ((neddle_right_value * 0.17578125) + 185) * pi_div_180; // pi/180=0.017453293
   int needle_right_xpos = (cos(alfa_right) * 285) + xoffset_right;
   int needle_right_ypos = (sin(alfa_right) * 285) + yoffset;
   SetLines(BLACK , xoffset_right, yoffset, old_needle_right_xpos, old_needle_right_ypos); //old needle
