@@ -48,7 +48,7 @@ int analog_rfl_Pin = A0;
 int analog_batt_Pin = A2;
 int band_val = 0;
 float band_factor = 1;
-const float pi_div_180 = 0.17578125; //pi / 180
+const float pi_div_180 = 0.017578125; //pi / 180
 const float swr_warning = 1.2;
 
 //calculate the incomming dc-voltage from SWR-Bridge the right hf-current:
@@ -123,7 +123,7 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(BLACK);
-  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V1.1-Beta"));// Arduino IDE 1.8.4
+  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V1.1-R"));// Arduino IDE 1.8.4
   ScreenText(WHITE, 10, 40 , 2, F("Max. 1.5 kW / Bands: 160m-10m"));
   ScreenText(WHITE, 10, 70 , 2, F("50 Ohm Coax Cable"));
   ScreenText(WHITE, 10, 200 , 6, F("DD8ZJ / DL8KX"));
@@ -408,10 +408,10 @@ void hf_power_analog() {  //show FWD / RFL / SWR on cross needles
   if (update_values == true || force_update_values == true) {
     float swr = (fwd_float + rfl_float) / (fwd_float - rfl_float);
     if (swr > 100)swr = 100;
-    if (swr > swr_warning)SetRect(RED , 10, 218, 145, 40);
-    if (swr <= swr_warning)SetRect(BLACK , 10, 218, 145, 40);
-    SetFilledRect(BLACK , 20, 230, 100, 16);
-    if (fwd_float > 0)ScreenText(WHITE, 20, 230, 2 , "SWR: " + String (swr, 1));
+    if (swr > swr_warning)SetRect(RED , 170, 158, 145, 40);
+    if (swr <= swr_warning)SetRect(BLACK , 170, 158, 145, 40);
+    SetFilledRect(BLACK , 180, 170, 100, 16);
+    if (fwd_float > 0)ScreenText(WHITE, 180, 170, 2 , "SWR: " + String (swr, 1));
   }
 }
 //--------------------------------------------------------------------------------------------------------
