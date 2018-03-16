@@ -89,6 +89,12 @@ int smart_fade_out = 5;
 #define encoder0PinC  5 //common Pin
 volatile unsigned int encoder0Pos = 0;
 
+//relais ptt interrupt
+#define relais_0 7
+boolean ptt_interrupt = false;
+float ptt_interrupt_watt = 35;
+const float ptt_interrupt_swr = 2.0;
+
 //button
 int button_Pin = 4; // switch the button to ground
 int button_status = 0;
@@ -96,7 +102,8 @@ int button_status = 0;
 //menue
 int menue_level = 0;
 boolean use_batt = false;
-int menue_2_choose = 0;
+int menue_3_choose = 0;
+int menue_4_choose = 0;
 int old_needle_xpos = 0;
 int old_needle_ypos = 0;
 int old_needle_left_xpos = 0;
@@ -118,12 +125,15 @@ void setup() {
   attachInterrupt(0, doEncoderA, CHANGE); // encoder pin on interrupt 0 (pin 2)
   attachInterrupt(1, doEncoderB, CHANGE); // encoder pin on interrupt 1 (pin 3)
 
+  pinMode(relais_0, OUTPUT);
+  digitalWrite(relais_0, LOW);
+
   Serial.begin(9600);
   tft.init();
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(BLACK);
-  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V1.1-R"));// Arduino IDE 1.8.4
+  ScreenText(WHITE, 10, 10 , 2, F("HF-Power Meter: V1.2-Beta"));// Arduino IDE 1.8.4
   ScreenText(WHITE, 10, 40 , 2, F("Max. 1.5 kW / Bands: 160m-10m"));
   ScreenText(WHITE, 10, 70 , 2, F("50 Ohm Coax Cable"));
   ScreenText(WHITE, 10, 200 , 6, F("DD8ZJ / DL8KX"));
@@ -175,6 +185,10 @@ void loop() {
     encoder_button();
   }
   if (menue_level == 4) {
+    menue_4();
+    encoder_button();
+  }
+  if (menue_level == 5) {
     menue_level = 0;
     scale();
   }
@@ -283,7 +297,7 @@ void hf_power_digital() {  //show FWD / RFL / SWR / Peak-Power
   //----------------------------------------------
 
   if (fwd > 0 && fwd < 43) { // R1=130KOhm, R2=38KOhm, V=1:3.42  > 0,7V/3.42=204mV = 42bit A/D Diode Limit Voltage  (R2=0-50KOhm)
-    SetFilledTriangle(RED , 200, 290, 192 , 306 , 208 , 306);
+    SetFilledTriangle(RED , 200, 290, 192 , 306 , 208 , 306);//innerhalb 0.7V Diodenspannung
     ScreenText(RED, 220, 291, 2 , "Not Exact !");
   }
   else {
@@ -296,6 +310,9 @@ void hf_power_digital() {  //show FWD / RFL / SWR / Peak-Power
   float  fwd_watt = calc_hf_power(fwd_float);
   float  rfl_watt = calc_hf_power(rfl_float);
 
+  if (fwd_watt > ptt_interrupt_watt) { // PTT Interrupt wenn TX-Power > Schwellwert
+    if (ptt_interrupt_watt > 0 )ptt_interrupt = true; // deaktiviert wenn wert = 0
+  }
 
   if (fwd == 0)peak_reset++;
   if (fwd > 0)peak_reset = 0;
@@ -349,8 +366,13 @@ void hf_power_digital() {  //show FWD / RFL / SWR / Peak-Power
     if (swr > 100)swr = 100;
     if (swr > swr_warning)SetRect(RED , 10, 218, 145, 40);
     if (swr <= swr_warning)SetRect(BLACK , 10, 218, 145, 40);
-    SetFilledRect(BLACK , 20, 230, 100, 16);
-    if (fwd_float > 0)ScreenText(WHITE, 20, 230, 2 , "SWR: " + String (swr, 1));
+    SetFilledRect(BLACK , 20, 230, 130, 16);
+    if (fwd_float > 0) {
+      ScreenText(WHITE, 20, 230, 2 , "SWR: " + String (swr, 1));
+      if (swr > ptt_interrupt_swr && fwd > 42) { // PTT Interrupt wenn SWR zu gross
+        ptt_interrupt = true;
+      }
+    }
   }
 
   //Peak Value
@@ -372,6 +394,15 @@ void hf_power_digital() {  //show FWD / RFL / SWR / Peak-Power
     if (peak_watt > 1)ScreenText(WHITE, 200, 70, 1, "PEAK: " + String (peak_watt, 1) + " W");
   }
   SetTriangle(WHITE , old_peak_bar, 102, old_peak_bar - 4, 108, old_peak_bar + 4, 108);
+
+  //PTT Interrupt
+  if (ptt_interrupt == true) { // PTT Interrupt wenn TX-Power > Schwellwert oder SWR > 2
+    digitalWrite(relais_0, HIGH);
+    ScreenText(RED, 20, 291, 2 , "PTT -/- !");
+  }
+  else {
+    SetFilledRect(BLACK , 0, 291, 160, 16);
+  }
 
   update_values = false;
 }
@@ -522,9 +553,20 @@ void encoder_turn(boolean enc_direction) {
     if (menue_level == 1 ) {
 
     }
-    if (menue_level == 2 ) {
-      menue_2_choose++;
-      if (menue_2_choose > 2)menue_2_choose = 0;
+    if (menue_level == 3 ) {
+      menue_3_choose++;
+      if (menue_3_choose > 2)menue_3_choose = 0;
+    }
+    if (menue_level == 4 ) {
+      if (ptt_interrupt_watt < 100) {
+        ptt_interrupt_watt += 10;
+      }
+      else {
+        ptt_interrupt_watt += 100;
+      }
+      if (ptt_interrupt_watt > 1500) {
+        ptt_interrupt_watt = 1500;
+      }
     }
   }
   //---------------------------
@@ -536,9 +578,20 @@ void encoder_turn(boolean enc_direction) {
     if (menue_level == 1 ) {
 
     }
-    if (menue_level == 2 ) {
-      menue_2_choose--;
-      if (menue_2_choose < 0)menue_2_choose = 2;
+    if (menue_level == 3 ) {
+      menue_3_choose--;
+      if (menue_3_choose < 0)menue_3_choose = 2;
+    }
+    if (menue_level == 4 ) {
+      if (ptt_interrupt_watt < 100) {
+        ptt_interrupt_watt -= 10;
+      }
+      else {
+        ptt_interrupt_watt -= 100;
+      }
+      if (ptt_interrupt_watt < 0) {
+        ptt_interrupt_watt = 0;
+      }
     }
   }
 }
@@ -550,9 +603,13 @@ void encoder_button() { //enter the menue
   if (button_val == LOW & button_status == 0)button_status++;
   if (button_val == HIGH & button_status == 1) {
     //todo:
-    if (menue_level == 3 ) {
+    if (menue_level == 4 ) {
       menue_level++;
       force_update_values = true;//force to update values
+      tft.fillScreen(BLACK);
+    }
+    if (menue_level == 3 ) {
+      menue_level++;
       tft.fillScreen(BLACK);
     }
     if (menue_level == 2 ) {
@@ -564,8 +621,14 @@ void encoder_button() { //enter the menue
       tft.fillScreen(BLACK);
     }
     if (menue_level == 0 ) {
-      menue_level++;
-      tft.fillScreen(BLACK);
+      if (ptt_interrupt == true) {
+        ptt_interrupt = false;
+        digitalWrite(relais_0, LOW);
+      }
+      else {
+        menue_level++;
+        tft.fillScreen(BLACK);
+      }
     }
     button_status--;
   }
@@ -614,17 +677,17 @@ void menue_3() {
     SetFilledRect(BLACK , 160, 120, 150, 16);
     ScreenText(WHITE, 10, 120, 2 , "Pin:" + String(analog_batt_Pin) + " > A/D: " + String ((batt * to_mV), 1) + " mV");
 
-    if (menue_2_choose == 0) {
+    if (menue_3_choose == 0) {
       SetFilledRect(BLACK , 0, 0, 5, 300);
       SetFilledCircle(RED , 2, 88, 2);
       show_needle(float(fwd));
     }
-    if (menue_2_choose == 1) {
+    if (menue_3_choose == 1) {
       SetFilledRect(BLACK , 0, 0, 5, 300);
       SetFilledCircle(RED , 2, 108, 2);
       show_needle(float(rfl));
     }
-    if (menue_2_choose == 2) {
+    if (menue_3_choose == 2) {
       SetFilledRect(BLACK , 0, 0, 5, 300);
       SetFilledCircle(RED , 2, 128, 2);
       show_needle(float(batt));
@@ -632,6 +695,24 @@ void menue_3() {
 
     update_values = false;
   }
+}
+//--------------------------------------------------------------------------------------------------------
+void menue_4() {
+
+  ScreenText(WHITE, 10, 25, 2, "PTT Interruption:");
+  SetLines(WHITE, 10, 50, 210, 50);
+
+  SetFilledRect(BLACK , 55, 80, 250, 16);
+  ScreenText(WHITE, 10, 80, 2 , "TX :" + String(ptt_interrupt_watt) + " W");
+
+  if (ptt_interrupt_watt == 0) {
+    ScreenText(RED, 220, 80, 2 , "Off");
+  }
+
+  ScreenText(WHITE, 10, 100, 2 , "SWR:" + String(ptt_interrupt_swr));
+
+  SetFilledRect(BLACK , 0, 0, 5, 300);
+  SetFilledCircle(RED , 2, 88, 2);
 }
 //--------------------------------------------------------------------------------------------------------
 void show_needle(float neddle_value) {
