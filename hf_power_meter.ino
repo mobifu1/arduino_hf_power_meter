@@ -1,4 +1,4 @@
-/* Modified by Bodmer to be an example for TFT_HX8357 library.
+bifu/* Modified by Bodmer to be an example for TFT_HX8357 library.
    This sketch uses the GLCD font only.
 
    This test occupies the whole of the display therefore
@@ -90,7 +90,7 @@ int smart_fade_out = 5;
 volatile unsigned int encoder0Pos = 0;
 
 //relais ptt interrupt
-#define relais_0 7
+#define relais_0 7   // i bought a chinese dirt relay, this works only for --
 boolean ptt_interrupt = false;
 float ptt_interrupt_watt = 35;
 float ptt_interrupt_swr = 1.3;
@@ -371,7 +371,7 @@ void hf_power_digital() {  //show FWD / RFL / SWR / Peak-Power
     if (fwd_float > 0) {
       ScreenText(WHITE, 20, 230, 2 , "SWR: " + String (swr, 1));
       if (swr > ptt_interrupt_swr && fwd > 42) { // PTT Interrupt wenn SWR zu gross
-        if (ptt_interrupt_swr > 1)ptt_interrupt = true;
+        if (ptt_interrupt_swr > 1)ptt_interrupt = true;// deaktiviert wenn wert = 1
       }
     }
   }
@@ -397,12 +397,13 @@ void hf_power_digital() {  //show FWD / RFL / SWR / Peak-Power
   SetTriangle(WHITE , old_peak_bar, 102, old_peak_bar - 4, 108, old_peak_bar + 4, 108);
 
   //PTT Interrupt
-  if (ptt_interrupt == true) { // PTT Interrupt wenn TX-Power > Schwellwert oder SWR > 2
+  if (ptt_interrupt == true) { // PTT Interrupt wenn TX-Power > Schwellwert oder SWR > Schwellwert
     digitalWrite(relais_0, LOW);
-    ScreenText(RED, 20, 291, 2 , "PTT -/- !");
+    ScreenText(RED, 20, 291, 2 , "PTT Protect");
   }
   else {
-    SetFilledRect(BLACK , 0, 291, 160, 16);
+    SetFilledRect(BLACK , 55, 291, 105, 16);
+    ScreenText(GREEN, 20, 291, 2 , "PTT");
   }
 
   update_values = false;
