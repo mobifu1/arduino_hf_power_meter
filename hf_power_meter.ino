@@ -1,4 +1,4 @@
-bifu/* Modified by Bodmer to be an example for TFT_HX8357 library.
+/* Modified by Bodmer to be an example for TFT_HX8357 library.
    This sketch uses the GLCD font only.
 
    This test occupies the whole of the display therefore
