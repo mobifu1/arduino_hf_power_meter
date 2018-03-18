@@ -311,7 +311,7 @@ void hf_power_digital() {  //show FWD / RFL / SWR / Peak-Power
   float  fwd_watt = calc_hf_power(fwd_float);
   float  rfl_watt = calc_hf_power(rfl_float);
 
-  if (fwd_watt > ptt_interrupt_watt) { // PTT Interrupt wenn TX-Power > Schwellwert
+  if (fwd_watt > ptt_interrupt_watt && fwd > 42) { // PTT Interrupt wenn TX-Power > Schwellwert
     if (ptt_interrupt_watt > 0 )ptt_interrupt = true; // deaktiviert wenn wert = 0
   }
 
