@@ -17,6 +17,7 @@
     Die ausgekoppelte FWD Spannung ist dem HF-Strom proportional.
 */
 #include <TimerOne.h>
+#include <EEPROM.h>
 #include <TFT_HX8357.h> // Hardware-specific library
 #include "Free_Fonts.h"
 
@@ -92,8 +93,8 @@ volatile unsigned int encoder0Pos = 0;
 //relais ptt interrupt
 #define relais_0 7   // i bought a chinese dirt relay, this works only for --
 boolean ptt_interrupt = false;
-float ptt_interrupt_watt = 35;
-float ptt_interrupt_swr = 1.3;
+float ptt_interrupt_watt;
+float ptt_interrupt_swr;
 
 //button
 int button_Pin = 4; // switch the button to ground
@@ -111,6 +112,10 @@ int old_needle_left_xpos = 0;
 int old_needle_left_ypos = 0;
 int old_needle_right_xpos = 0;
 int old_needle_right_ypos = 0;
+
+//4 Kbyte EEprom address:
+#define ptt_interrupt_watt_address 0
+#define ptt_interrupt_swr_address 6
 //#########################################################################
 //#########################################################################
 void setup() {
@@ -146,6 +151,11 @@ void setup() {
     if (TickTock == true)ScreenText(WHITE, i, 145 , 2, F("."));
     delay(100);
   }
+
+  EEPROM.get(ptt_interrupt_watt_address, ptt_interrupt_watt);
+  EEPROM.get(ptt_interrupt_swr_address, ptt_interrupt_swr);
+  if (ptt_interrupt_watt < 0)ptt_interrupt_watt = 0;
+  if (ptt_interrupt_swr < 0)ptt_interrupt_swr = 1;
 
   delay(1000);
   tft.fillScreen(BLACK);
@@ -565,15 +575,15 @@ void encoder_turn(boolean enc_direction) {
     if (menue_level == 4 ) {
       if (menue_4_y_value == 0) {
         menue_4_x_value++;
-        if (menue_4_x_value > 2)menue_4_x_value = 2;
+        if (menue_4_x_value > 3)menue_4_x_value = 0;
       }
 
-      if (menue_4_x_value == 1 &&  menue_4_y_value == 1) {
+      if (menue_4_x_value == 1 &&  menue_4_y_value == 1) {//TX
         if (ptt_interrupt_watt < 100) {
-          ptt_interrupt_watt += 10;
+          ptt_interrupt_watt += 5;
         }
         else {
-          ptt_interrupt_watt += 100;
+          ptt_interrupt_watt += 50;
         }
         if (ptt_interrupt_watt > 1500) {
           ptt_interrupt_watt = 1500;
@@ -581,7 +591,7 @@ void encoder_turn(boolean enc_direction) {
         SetFilledRect(BLACK , 55, 100, 200, 16);
       }
 
-      if (menue_4_x_value == 2 && menue_4_y_value == 1) { //ptt_interrupt_swr
+      if (menue_4_x_value == 2 && menue_4_y_value == 1) {//SWR
         ptt_interrupt_swr += 0.1;
         if (ptt_interrupt_swr > 3) {
           ptt_interrupt_swr = 3;
@@ -608,15 +618,15 @@ void encoder_turn(boolean enc_direction) {
     if (menue_level == 4 ) {
       if (menue_4_y_value == 0) {
         menue_4_x_value--;
-        if (menue_4_x_value < 0)menue_4_x_value = 2;
+        if (menue_4_x_value < 0)menue_4_x_value = 3;
       }
 
-      if (menue_4_x_value == 1 && menue_4_y_value == 1) {
+      if (menue_4_x_value == 1 && menue_4_y_value == 1) {//TX
         if (ptt_interrupt_watt < 100) {
-          ptt_interrupt_watt -= 10;
+          ptt_interrupt_watt -= 5;
         }
         else {
-          ptt_interrupt_watt -= 100;
+          ptt_interrupt_watt -= 50;
         }
 
         if (ptt_interrupt_watt < 0) {
@@ -625,7 +635,7 @@ void encoder_turn(boolean enc_direction) {
         SetFilledRect(BLACK , 55, 100, 200, 16);
       }
 
-      if (menue_4_x_value == 2 && menue_4_y_value == 1) {
+      if (menue_4_x_value == 2 && menue_4_y_value == 1) {//SWR
         ptt_interrupt_swr -= 0.1;
         if (ptt_interrupt_swr < 1) {
           ptt_interrupt_swr = 1;
@@ -645,6 +655,8 @@ void encoder_button() { //enter the menue
     //todo:
     if (menue_level == 4 ) {
       if (menue_4_x_value == 0) { //Exit
+        EEPROM.get(ptt_interrupt_watt_address, ptt_interrupt_watt);
+        EEPROM.get(ptt_interrupt_swr_address, ptt_interrupt_swr);
         menue_level++;
         force_update_values = true;//force to update values
         tft.fillScreen(BLACK);
@@ -664,6 +676,11 @@ void encoder_button() { //enter the menue
         else {
           menue_4_y_value--;
         }
+      }
+      if (menue_4_x_value == 3) { //Save
+        //Save to EEprom
+        EEPROM.put(ptt_interrupt_watt_address, ptt_interrupt_watt);
+        EEPROM.put(ptt_interrupt_swr_address, ptt_interrupt_swr);
       }
     }
     if (menue_level == 3 ) {
@@ -767,6 +784,7 @@ void menue_4() {
   //SetFilledRect(BLACK , 55, 120, 200, 16);
   ScreenText(WHITE, 10, 120, 2 , "SWR:" + String(ptt_interrupt_swr));
   if (ptt_interrupt_swr == 1) ScreenText(RED, 220, 120, 2 , "Off");
+  ScreenText(WHITE, 10, 140, 2 , "Save Values");
   //-------------------------------------
   if (menue_4_x_value == 0) { //Exit
     SetFilledRect(BLACK , 0, 0, 5, 300);
@@ -779,6 +797,10 @@ void menue_4() {
   if (menue_4_x_value == 2) { //SWR
     SetFilledRect(BLACK , 0, 0, 5, 300);
     SetFilledCircle(RED , 2, 128, 2);
+  }
+  if (menue_4_x_value == 3) { //Save to EEProm
+    SetFilledRect(BLACK , 0, 0, 5, 300);
+    SetFilledCircle(RED , 2, 148, 2);
   }
 
   //SetFilledRect(RED , 320, 160, 60, 40);
