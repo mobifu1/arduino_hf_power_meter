@@ -289,6 +289,16 @@ void hf_power_digital() {  //show FWD / RFL / SWR / Peak-Power
   int fwd = analogRead(analog_fwd_Pin);    // read from sensor pin value:0-1024
   int rfl = analogRead(analog_rfl_Pin);    // read from sensor pin value:0-1024
 
+  //------avaraging:----------------------------
+  fwd += analogRead(analog_fwd_Pin);
+  rfl += analogRead(analog_rfl_Pin);
+  fwd += analogRead(analog_fwd_Pin);
+  rfl += analogRead(analog_rfl_Pin);
+  fwd += analogRead(analog_fwd_Pin);
+  rfl += analogRead(analog_rfl_Pin);
+  fwd = fwd >> 2; //= division 4
+  rfl = rfl >> 2; //= division 4
+
   //------smart fade out:-----------------------
   if (fwd < 2 && old_fwd > smart_fade_out) {
     old_fwd -= smart_fade_out;
